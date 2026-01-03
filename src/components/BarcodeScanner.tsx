@@ -31,10 +31,10 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         { 
           facingMode: 'environment',
           advanced: [
-            { focusMode: 'continuous' },
-            { focusMode: 'auto' }
+            { focusMode: 'continuous' as any },
+            { focusMode: 'auto' as any }
           ]
-        },
+        } as any,
         {
           fps: 10,
           qrbox: { width: 250, height: 150 },
