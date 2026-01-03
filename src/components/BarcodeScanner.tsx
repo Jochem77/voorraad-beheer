@@ -64,10 +64,17 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           disableFlip: false
         },
         (decodedText) => {
-          console.log('Barcode scanned:', decodedText)
+          console.log('✅ Barcode successfully scanned:', decodedText)
+          console.log('Calling onScan callback...')
+          
+          // Call the callback first
           onScan(decodedText)
-          stopScanning()
-          onClose()
+          
+          // Then stop and close
+          setTimeout(() => {
+            stopScanning()
+            onClose()
+          }, 100)
         },
         (errorMessage) => {
           // Ignore continuous scanning errors

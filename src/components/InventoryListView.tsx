@@ -125,7 +125,11 @@ export function InventoryListView({ items, onDelete, onUpdate, onEditCard, total
           <BarcodeScanner 
             isOpen={showScanner}
             onClose={() => setShowScanner(false)}
-            onScan={(code) => onSkuSearchChange(code)}
+            onScan={(code) => {
+              console.log('Barcode received in InventoryListView:', code)
+              onSkuSearchChange(code)
+              console.log('SKU search updated with:', code)
+            }}
           />
         </div>
       )}
