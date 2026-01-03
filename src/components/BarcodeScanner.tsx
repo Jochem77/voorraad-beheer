@@ -23,9 +23,12 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         if (devices && devices.length > 0) {
           console.log('Available cameras:', devices)
           setCameras(devices)
-          // Try to select back camera by default
-          const backCamera = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'))
-          setSelectedCamera(backCamera?.id || devices[devices.length - 1].id)
+          // Always use camera 0
+          setSelectedCamera(devices[0].id)
+          // Automatically start scanning with camera 0
+          setTimeout(() => {
+            startScanning()
+          }, 100)
         } else {
           setError('Geen camera\'s gevonden op dit apparaat')
         }
@@ -196,39 +199,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           <div id="barcode-reader"></div>
           {!cameraStarted && !error && cameras.length > 0 && (
             <div className="scanner-loading">
-              {cameras.length > 1 && (
-                <div style={{ marginBottom: '1rem', width: '100%' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', color: '#aaa' }}>
-                    Selecteer camera:
-                  </label>
-                  <select 
-                    value={selectedCamera} 
-                    onChange={(e) => setSelectedCamera(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      background: '#252525',
-                      border: '1px solid #444',
-                      borderRadius: '6px',
-                      color: '#fff'
-                    }}
-                  >
-                    {cameras.map(camera => (
-                      <option key={camera.id} value={camera.id}>
-                        {camera.label || `Camera ${camera.id}`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              <p>Klik op de knop om de camera te starten</p>
-              <button 
-                onClick={startScanning}
-                className="btn-start-camera"
-                disabled={isScanning || !selectedCamera}
-              >
-                📷 Start Camera
-              </button>
+              <p>Camera wordt gestart...</p>
             </div>
           )}
           {!cameraStarted && !error && cameras.length === 0 && (
@@ -239,13 +210,6 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           {error && (
             <div className="scanner-error">
               <p>{error}</p>
-              <button 
-                onClick={startScanning}
-                className="btn-start-camera"
-                disabled={!selectedCamera}
-              >
-                🔄 Probeer Opnieuw
-              </button>
             </div>
           )}
         </div>
