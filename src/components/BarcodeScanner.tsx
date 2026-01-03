@@ -47,7 +47,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     const checkAndInitScanner = async () => {
       try {
         // Check if we have camera permissions
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        if (navigator.mediaDevices) {
           // Try to get permission
           console.log('Checking camera permissions...')
           
