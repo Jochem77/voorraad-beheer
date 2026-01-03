@@ -1,0 +1,350 @@
+import React, { useState, useEffect } from 'react'
+import type { InventoryItem, ProductType, Condition, Status } from '../types'
+import { PRODUCT_LABELS, CONDITION_LABELS, STATUS_LABELS, JOYCON_COLORS, DUALSENSE_COLORS, SWITCH_LITE_COLORS, XBOX_COLORS } from '../types'
+import './AddItemForm.css'
+
+interface AddItemFormProps {
+  onAdd: (item: Omit<InventoryItem, 'id'>) => void
+  onClose?: () => void
+  nextNumber?: number
+  initialType?: ProductType
+  onTypeChange?: (type: ProductType) => void
+}
+
+export function AddItemForm({ onAdd, onClose, nextNumber = 1, initialType = 'switch_joycon_left', onTypeChange }: AddItemFormProps) {
+  const [currentTab, setCurrentTab] = useState<'info' | 'aankoop' | 'verkoop' | 'acties' | 'fotos'>('info')
+  const [type, setType] = useState<ProductType>(initialType)
+  const [kleur, setKleur] = useState('Black')
+  const [kleurHex, setKleurHex] = useState(JOYCON_COLORS['Black'])
+  const [serienummer, setSerienummer] = useState('')
+  const [staat, setStaat] = useState<Condition>('als_nieuw')
+  const [status, setStatus] = useState<Status>('nieuw')
+  const [purchasePrice, setPurchasePrice] = useState('')
+  const [purchaseDate, setPurchaseDate] = useState('')
+  const [purchaseInvoice, setPurchaseInvoice] = useState('')
+  const [source, setSource] = useState('')
+  const [sellingPrice, setSellingPrice] = useState('')
+  const [sellingDate, setSellingDate] = useState('')
+  const [sellingInvoice, setSellingInvoice] = useState('')
+  const [buyerName, setBuyerName] = useState('')
+  const [notes, setNotes] = useState('')
+
+  // Update type when initialType changes
+  useEffect(() => {
+    setType(initialType)
+    // Reset color based on new type
+    if (initialType === 'switch_joycon_left' || initialType === 'switch_joycon_right') {
+      setKleur('Black')
+      setKleurHex(JOYCON_COLORS['Black'])
+    } else if (initialType === 'ps5_dualsense') {
+      setKleur('White')
+      setKleurHex(DUALSENSE_COLORS['White'])
+    } else if (initialType === 'switch_lite') {
+      setKleur('Gray')
+      setKleurHex(SWITCH_LITE_COLORS['Gray'])
+    } else if (initialType === 'xbox_series') {
+      setKleur('White')
+      setKleurHex(XBOX_COLORS['White'])
+    }
+  }, [initialType])
+
+  const isJoycon = type === 'switch_joycon_left' || type === 'switch_joycon_right'
+  const isDualsense = type === 'ps5_dualsense'
+  const isSwitchLite = type === 'switch_lite'
+  const isXbox = type === 'xbox_series'
+
+  const generateSKU = () => {
+    return `SKU-${String(nextNumber).padStart(4, '0')}`
+  }
+
+  const handleKleurChange = (newKleur: string) => {
+    setKleur(newKleur)
+    if (isJoycon && JOYCON_COLORS[newKleur]) {
+      setKleurHex(JOYCON_COLORS[newKleur])
+    } else if (isDualsense && DUALSENSE_COLORS[newKleur]) {
+      setKleurHex(DUALSENSE_COLORS[newKleur])
+    } else if (isSwitchLite && SWITCH_LITE_COLORS[newKleur]) {
+      setKleurHex(SWITCH_LITE_COLORS[newKleur])
+    } else if (isXbox && XBOX_COLORS[newKleur]) {
+      setKleurHex(XBOX_COLORS[newKleur])
+    }
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!kleur.trim()) {
+      alert('Voer een kleur in')
+      return
+    }
+
+    if (!serienummer.trim()) {
+      alert('Voer een serienummer in')
+      return
+    }
+
+    onAdd({
+      sku: generateSKU(),
+      type,
+      kleur: kleur.trim(),
+      kleur_hex: (isJoycon || isDualsense || isSwitchLite || isXbox) ? kleurHex : undefined,
+      serienummer: serienummer.trim(),
+      staat,
+      status,
+      purchase_price: purchasePrice ? parseFloat(purchasePrice) : undefined,
+      selling_price: sellingPrice ? parseFloat(sellingPrice) : undefined,
+      purchase_date: purchaseDate || undefined,
+      purchase_invoice: purchaseInvoice.trim() || undefined,
+      source: source.trim() || undefined,
+      selling_date: sellingDate || undefined,
+      selling_invoice: sellingInvoice.trim() || undefined,
+      buyer_name: buyerName.trim() || undefined,
+      defect_notes: notes.trim() || undefined,
+      date_added: new Date().toISOString()
+    })
+  }
+
+  const getColorOptions = () => {
+    if (isJoycon) return Object.keys(JOYCON_COLORS)
+    if (isDualsense) return Object.keys(DUALSENSE_COLORS)
+    if (isSwitchLite) return Object.keys(SWITCH_LITE_COLORS)
+    if (isXbox) return Object.keys(XBOX_COLORS)
+    return []
+  }
+
+  return (
+    <form className="add-item-form" onSubmit={handleSubmit}>
+      <div className="form-header">
+        <div className="modal-tabs">
+          <button 
+            type="button"
+            className={`tab-button ${currentTab === 'info' ? 'active' : ''}`}
+            onClick={() => setCurrentTab('info')}
+          >
+            Info
+          </button>
+          <button 
+            type="button"
+            className={`tab-button ${currentTab === 'aankoop' ? 'active' : ''}`}
+            onClick={() => setCurrentTab('aankoop')}
+          >
+            Aankoop
+          </button>
+          <button 
+            type="button"
+            className={`tab-button ${currentTab === 'verkoop' ? 'active' : ''}`}
+            onClick={() => setCurrentTab('verkoop')}
+          >
+            Verkoop
+          </button>
+          <button 
+            type="button"
+            className={`tab-button ${currentTab === 'acties' ? 'active' : ''}`}
+            onClick={() => setCurrentTab('acties')}
+          >
+            Acties
+          </button>
+          <button 
+            type="button"
+            className={`tab-button ${currentTab === 'fotos' ? 'active' : ''}`}
+            onClick={() => setCurrentTab('fotos')}
+          >
+            Fotos
+          </button>
+        </div>
+      </div>
+
+      <div className="item-details">
+        {currentTab === 'info' && (
+          <>
+            <div className="detail-row">
+              <span className="label">Kleur:</span>
+              <select
+                className="edit-select"
+                value={kleur}
+                onChange={(e) => handleKleurChange(e.target.value)}
+              >
+                {getColorOptions().map((colorName) => (
+                  <option key={colorName} value={colorName}>
+                    {colorName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="detail-row">
+              <span className="label">Serienummer:</span>
+              <input
+                type="text"
+                value={serienummer}
+                onChange={(e) => setSerienummer(e.target.value)}
+                placeholder="bijv. HAC-001"
+                className="edit-input"
+              />
+            </div>
+
+            <div className="detail-row">
+              <span className="label">Staat:</span>
+              <select
+                value={staat}
+                onChange={(e) => setStaat(e.target.value as Condition)}
+                className="edit-select"
+              >
+                <option value="als_nieuw">Als nieuw</option>
+                <option value="licht_gebruikt">Licht gebruikt</option>
+                <option value="gebruikt">Gebruikt</option>
+                <option value="beschadigd">Beschadigd</option>
+              </select>
+            </div>
+
+            <div className="detail-row">
+              <span className="label">Status:</span>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as Status)}
+                className="edit-select"
+              >
+                <option value="nieuw">Nieuw</option>
+                <option value="getest">Getest</option>
+                <option value="defect">Defect</option>
+                <option value="verkocht">Verkocht</option>
+              </select>
+            </div>
+
+            <div className="detail-row notes-row">
+              <span className="label">Opmerkingen:</span>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Eventuele notities..."
+                rows={3}
+                className="edit-notes"
+              />
+            </div>
+          </>
+        )}
+
+        {currentTab === 'aankoop' && (
+          <>
+            <div className="detail-row">
+              <span className="label">Aankoopprijs:</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={purchasePrice}
+                onChange={(e) => setPurchasePrice(e.target.value)}
+                placeholder="€"
+                className="edit-input"
+              />
+            </div>
+
+            <div className="detail-row">
+              <span className="label">Aankoopdatum:</span>
+              <input
+                type="date"
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
+                className="edit-input"
+              />
+            </div>
+
+            <div className="detail-row">
+              <span className="label">Factuur:</span>
+              <input
+                type="text"
+                value={purchaseInvoice}
+                onChange={(e) => setPurchaseInvoice(e.target.value)}
+                placeholder="bijv. FAC-2024-001"
+                className="edit-input"
+              />
+            </div>
+
+            <div className="detail-row">
+              <span className="label">Bron:</span>
+              <input
+                type="text"
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                placeholder="bijv. Marktplaats, Retail, etc."
+                className="edit-input"
+              />
+            </div>
+          </>
+        )}
+
+        {currentTab === 'verkoop' && (
+          <>
+            <div className="detail-row">
+              <span className="label">Verkoopprijs:</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={sellingPrice}
+                onChange={(e) => setSellingPrice(e.target.value)}
+                placeholder="€"
+                className="edit-input"
+              />
+            </div>
+
+            <div className="detail-row">
+              <span className="label">Verkoopsdatum:</span>
+              <input
+                type="date"
+                value={sellingDate}
+                onChange={(e) => setSellingDate(e.target.value)}
+                className="edit-input"
+              />
+            </div>
+
+            <div className="detail-row">
+              <span className="label">Factuur:</span>
+              <input
+                type="text"
+                value={sellingInvoice}
+                onChange={(e) => setSellingInvoice(e.target.value)}
+                placeholder="bijv. VK-2024-001"
+                className="edit-input"
+              />
+            </div>
+
+            <div className="detail-row">
+              <span className="label">Koper:</span>
+              <input
+                type="text"
+                value={buyerName}
+                onChange={(e) => setBuyerName(e.target.value)}
+                placeholder="Naam koper"
+                className="edit-input"
+              />
+            </div>
+          </>
+        )}
+
+        {currentTab === 'fotos' && (
+          <div style={{ padding: '1rem', color: '#aaa' }}>
+            Foto's kunnen na het toevoegen van het product worden geüpload.
+          </div>
+        )}
+
+        {currentTab === 'acties' && (
+          <div style={{ padding: '1rem', color: '#aaa' }}>
+            Acties kunnen na het toevoegen van het product worden toegevoegd.
+          </div>
+        )}
+      </div>
+
+      <div className="form-actions">
+        <button type="submit" className="btn-add">
+          Toevoegen
+        </button>
+        {onClose && (
+          <button type="button" className="btn-cancel" onClick={onClose}>
+            Annuleren
+          </button>
+        )}
+      </div>
+    </form>
+  )
+}

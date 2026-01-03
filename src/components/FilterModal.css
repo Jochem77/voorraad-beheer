@@ -1,0 +1,163 @@
+.filter-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.filter-modal {
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem;
+  border-bottom: 1px solid #444;
+  position: sticky;
+  top: 0;
+  background: #1a1a1a;
+}
+
+.filter-header h2 {
+  margin: 0;
+  color: #667eea;
+  font-size: 1.3rem;
+}
+
+.btn-close-filter {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.btn-close-filter:hover {
+  color: #fff;
+}
+
+.filter-content {
+  padding: 2rem;
+}
+
+.filter-section {
+  margin-bottom: 2rem;
+}
+
+.filter-section h3 {
+  margin: 0 0 1rem 0;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.filter-group {
+  margin-bottom: 1rem;
+}
+
+.filter-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #aaa;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.filter-input {
+  width: 100%;
+  padding: 0.6rem;
+  background: #252525;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.95rem;
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.checkbox-label:hover {
+  color: #667eea;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 1rem;
+  padding: 2rem;
+  border-top: 1px solid #444;
+  background: #252525;
+  position: sticky;
+  bottom: 0;
+}
+
+.btn-reset,
+.btn-apply {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-reset {
+  background: #444;
+  color: #fff;
+}
+
+.btn-reset:hover {
+  background: #555;
+}
+
+.btn-apply {
+  background: #667eea;
+  color: white;
+}
+
+.btn-apply:hover {
+  background: #7c8ff5;
+}
