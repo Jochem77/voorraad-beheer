@@ -26,9 +26,15 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       
       console.log('Starting camera...')
       
-      // Start the camera with back camera preference
+      // Start the camera with back camera preference and autofocus
       await scanner.start(
-        { facingMode: 'environment' }, // Use back camera on mobile
+        { 
+          facingMode: 'environment',
+          advanced: [
+            { focusMode: 'continuous' },
+            { focusMode: 'auto' }
+          ]
+        },
         {
           fps: 10,
           qrbox: { width: 250, height: 150 },
