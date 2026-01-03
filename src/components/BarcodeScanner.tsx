@@ -10,7 +10,6 @@ interface BarcodeScannerProps {
 
 export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null)
-  const [isScanning, setIsScanning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cameraStarted, setCameraStarted] = useState(false)
   const [cameras, setCameras] = useState<CameraDevice[]>([])
@@ -141,7 +140,6 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       }, 500)
       
       setCameraStarted(true)
-      setIsScanning(true)
       console.log('Camera started successfully')
       
     } catch (err: any) {
@@ -168,7 +166,6 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       console.error('Error stopping scanner:', err)
     }
     setCameraStarted(false)
-    setIsScanning(false)
   }
 
   useEffect(() => {
