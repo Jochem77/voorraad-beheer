@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import type { InventoryItem, Condition, Status, ActionRecord, JoyConAction } from '../types'
+import { useState } from 'react'
+import type { InventoryItem, Condition, Status, ActionRecord, Action } from '../types'
 import { PRODUCT_LABELS, CONDITION_LABELS, STATUS_LABELS } from '../types'
 import { ProductActions } from './ProductActions'
 import './InventoryList.css'
@@ -9,9 +9,8 @@ interface InventoryListProps {
   actions: ActionRecord[]
   onDelete: (id: number) => void
   onUpdate: (id: number, updated: Partial<InventoryItem>) => void
-  onAddAction: (itemId: number, action: JoyConAction) => Promise<void>
+  onAddAction: (itemId: number, action: Action, otherAction?: string) => Promise<void>
   onDeleteAction: (actionId: number) => Promise<void>
-  onUpdateDefectNotes: (itemId: number, notes: string) => Promise<void>
   totalItems: number
 }
 
@@ -29,7 +28,7 @@ const conditionColors: Record<Condition, string> = {
   'beschadigd': '#ef4444'
 }
 
-export function InventoryList({ items, actions, onDelete, onUpdate, onAddAction, onDeleteAction, onUpdateDefectNotes, totalItems }: InventoryListProps) {
+export function InventoryList({ items, actions, onDelete, onUpdate, onAddAction, onDeleteAction, totalItems }: InventoryListProps) {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editKleur, setEditKleur] = useState('')
   const [editSerienummer, setEditSerienummer] = useState('')
@@ -218,7 +217,6 @@ export function InventoryList({ items, actions, onDelete, onUpdate, onAddAction,
               actions={actions.filter(a => a.item_id === item.id)}
               onAddAction={onAddAction}
               onDeleteAction={onDeleteAction}
-              onUpdateDefectNotes={onUpdateDefectNotes}
             />
           </div>
         ))}

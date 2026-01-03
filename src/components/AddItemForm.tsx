@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import type { InventoryItem, ProductType, Condition, Status } from '../types'
-import { PRODUCT_LABELS, CONDITION_LABELS, STATUS_LABELS, JOYCON_COLORS, DUALSENSE_COLORS, SWITCH_LITE_COLORS, XBOX_COLORS } from '../types'
+import { JOYCON_COLORS, DUALSENSE_COLORS, SWITCH_LITE_COLORS, XBOX_COLORS } from '../types'
 import './AddItemForm.css'
 
 interface AddItemFormProps {
@@ -11,7 +11,7 @@ interface AddItemFormProps {
   onTypeChange?: (type: ProductType) => void
 }
 
-export function AddItemForm({ onAdd, onClose, nextNumber = 1, initialType = 'switch_joycon_left', onTypeChange }: AddItemFormProps) {
+export function AddItemForm({ onAdd, onClose, nextNumber = 1, initialType = 'switch_joycon_left' }: AddItemFormProps) {
   const [currentTab, setCurrentTab] = useState<'info' | 'aankoop' | 'verkoop' | 'acties' | 'fotos'>('info')
   const [type, setType] = useState<ProductType>(initialType)
   const [kleur, setKleur] = useState('Black')

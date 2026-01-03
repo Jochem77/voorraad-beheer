@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import './App.css'
 import { Header } from './components/Header'
 import { InventoryListView } from './components/InventoryListView'
@@ -8,7 +8,7 @@ import { Settings } from './components/Settings'
 import { FilterModal, FilterState } from './components/FilterModal'
 import { Login } from './components/Login'
 import { supabase } from './lib/supabase'
-import type { InventoryItem, ProductType, ActionRecord, Action, Condition, Status } from './types'
+import type { InventoryItem, ProductType, ActionRecord, Action } from './types'
 import { PRODUCT_LABELS, CONDITION_LABELS, STATUS_LABELS, JOYCON_COLORS, DUALSENSE_COLORS, SWITCH_LITE_COLORS, XBOX_COLORS } from './types'
 
 function App() {
@@ -16,7 +16,6 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [items, setItems] = useState<InventoryItem[]>([])
   const [actions, setActions] = useState<ActionRecord[]>([])
-  const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [addItemType, setAddItemType] = useState<ProductType>('switch_joycon_left')
@@ -272,23 +271,6 @@ function App() {
     } catch (error) {
       console.error('Error uploading photos:', error)
       alert('Fout bij uploaden van foto\'s')
-    }
-  }
-
-  const updateDefectNotes = async (itemId: number, notes: string) => {
-    try {
-      const { error } = await supabase
-        .from('inventory_items')
-        .update({ defect_notes: notes })
-        .eq('id', itemId)
-
-      if (error) throw error
-      setItems(items.map(item => 
-        item.id === itemId ? { ...item, defect_notes: notes } : item
-      ))
-    } catch (error) {
-      console.error('Error updating defect notes:', error)
-      alert('Fout bij opslaan van opmerkingen')
     }
   }
 

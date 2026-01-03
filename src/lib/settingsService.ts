@@ -1,5 +1,4 @@
 import { supabase } from './supabase'
-import type { ConditionRecord, StatusRecord, JoyconActionRecord, SwitchActionRecord, DualSenseActionRecord, XboxActionRecord } from '../types'
 
 export const settingsService = {
   // Conditions

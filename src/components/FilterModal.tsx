@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import './FilterModal.css'
 import { ProductType, Condition, Status } from '../types'
 import { PRODUCT_LABELS, CONDITION_LABELS, STATUS_LABELS } from '../types'

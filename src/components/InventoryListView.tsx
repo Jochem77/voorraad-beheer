@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import type { InventoryItem, Condition, Status, ProductType } from '../types'
+import { useState } from 'react'
+import type { InventoryItem, Condition, Status } from '../types'
 import { PRODUCT_LABELS, CONDITION_LABELS, STATUS_LABELS } from '../types'
 import './InventoryListView.css'
 
@@ -32,12 +32,6 @@ export function InventoryListView({ items, onDelete, onUpdate, onEditCard, total
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editKleur, setEditKleur] = useState('')
   const [editSerienummer, setEditSerienummer] = useState('')
-
-  const startEdit = (item: InventoryItem) => {
-    setEditingId(item.id)
-    setEditKleur(item.kleur)
-    setEditSerienummer(item.serienummer)
-  }
 
   const saveEdit = (id: number) => {
     onUpdate(id, {

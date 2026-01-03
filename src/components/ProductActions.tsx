@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import type { InventoryItem, ActionRecord, JoyConAction, SwitchAction, DualSenseAction, XboxAction, Action } from '../types'
 import { JOYCON_ACTIONS, SWITCH_ACTIONS, DUALSENSE_ACTIONS, XBOX_ACTIONS } from '../types'
 import { settingsService } from '../lib/settingsService'
