@@ -26,34 +26,52 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       
       console.log('Starting camera...')
       
-      // Start the camera with back camera preference and autofocus
-      await scanner.start(
-        { 
-          facingMode: 'environment',
-          advanced: [
-            { focusMode: 'continuous' as any },
-            { focusMode: 'auto' as any }
-          ]
-        } as any,
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 150 },
-          aspectRatio: 1.777778
-        },
-        (decodedText) => {
-          // Success callback
-          console.log('Barcode scanned:', decodedText)
-          onScan(decodedText)
-          stopScanning()
-          onClose()
-        },
-        (errorMessage) => {
-          // Error callback - ignore continuous scanning errors
-          if (!errorMessage.includes('NotFoundException') && !errorMessage.includes('No MultiFormat Readers')) {
-            console.debug('Scan error:', errorMessage)
+      // Try with simple constraints first for better compatibility
+      try {
+        await scanner.start(
+          { facingMode: 'environment' },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 150 },
+            aspectRatio: 1.777778
+          },
+          (decodedText) => {
+            // Success callback
+            console.log('Barcode scanned:', decodedText)
+            onScan(decodedText)
+            stopScanning()
+            onClose()
+          },
+          (errorMessage) => {
+            // Error callback - ignore continuous scanning errors
+            if (!errorMessage.includes('NotFoundException') && !errorMessage.includes('No MultiFormat Readers')) {
+              console.debug('Scan error:', errorMessage)
+            }
           }
-        }
-      )
+        )
+      } catch (envErr) {
+        // If environment camera fails, try without facingMode constraint
+        console.log('Retrying without facingMode constraint...')
+        await scanner.start(
+          'environment',
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 150 },
+            aspectRatio: 1.777778
+          },
+          (decodedText) => {
+            console.log('Barcode scanned:', decodedText)
+            onScan(decodedText)
+            stopScanning()
+            onClose()
+          },
+          (errorMessage) => {
+            if (!errorMessage.includes('NotFoundException') && !errorMessage.includes('No MultiFormat Readers')) {
+              console.debug('Scan error:', errorMessage)
+            }
+          }
+        )
+      }
       
       setCameraStarted(true)
       setIsScanning(true)
@@ -65,8 +83,10 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         setError('Camera toegang geweigerd. Sta camera toegang toe in je browser instellingen.')
       } else if (err.name === 'NotFoundError') {
         setError('Geen camera gevonden op dit apparaat.')
+      } else if (err.name === 'OverconstrainedError') {
+        setError('Camera ondersteunt de gevraagde instellingen niet. Probeer een andere camera.')
       } else {
-        setError('Kan camera niet starten: ' + (err.message || 'Onbekende fout'))
+        setError('Kan camera niet starten: ' + (err.message || err.toString()))
       }
     }
   }
