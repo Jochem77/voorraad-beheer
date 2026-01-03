@@ -91,19 +91,9 @@ export function FilterModal({ isOpen, onClose, onApply, currentFilters }: Filter
         </div>
 
         <div className="filter-content">
-          {/* Search fields */}
+          {/* Search field */}
           <div className="filter-section">
             <h3>Zoeken</h3>
-            <div className="filter-group">
-              <label>SKU</label>
-              <input
-                type="text"
-                value={filters.skuSearch}
-                onChange={(e) => setFilters({...filters, skuSearch: e.target.value})}
-                placeholder="SKU zoeken..."
-                className="filter-input"
-              />
-            </div>
             <div className="filter-group">
               <label>Serienummer</label>
               <input

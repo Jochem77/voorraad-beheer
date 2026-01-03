@@ -12,6 +12,8 @@ interface InventoryListViewProps {
   onFilterClick?: () => void
   onAddClick?: () => void
   onSettingsClick?: () => void
+  skuSearch?: string
+  onSkuSearchChange?: (value: string) => void
 }
 
 const statusColors: Record<Status, string> = {
@@ -28,7 +30,7 @@ const conditionColors: Record<Condition, string> = {
   'beschadigd': '#ef4444'
 }
 
-export function InventoryListView({ items, onDelete, onUpdate, onEditCard, totalItems, onFilterClick, onAddClick, onSettingsClick }: InventoryListViewProps) {
+export function InventoryListView({ items, onDelete, onUpdate, onEditCard, totalItems, onFilterClick, onAddClick, onSettingsClick, skuSearch, onSkuSearchChange }: InventoryListViewProps) {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editKleur, setEditKleur] = useState('')
   const [editSerienummer, setEditSerienummer] = useState('')
@@ -100,6 +102,17 @@ export function InventoryListView({ items, onDelete, onUpdate, onEditCard, total
           )}
         </div>
       </div>
+      {onSkuSearchChange && (
+        <div className="sku-search-bar">
+          <input
+            type="text"
+            value={skuSearch || ''}
+            onChange={(e) => onSkuSearchChange(e.target.value)}
+            placeholder="🔍 Zoek op SKU..."
+            className="sku-search-input"
+          />
+        </div>
+      )}
       <div className="table-wrapper">
         <table className="inventory-table">
           <thead>

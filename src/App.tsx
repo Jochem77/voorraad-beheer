@@ -48,6 +48,7 @@ function App() {
     skuSearch: '',
     serienummerSearch: ''
   })
+  const [skuSearch, setSkuSearch] = useState('')
   const [prefillData, setPrefillData] = useState<{ serialNumber?: string, color?: string } | null>(null)
 
   // Check authentication on mount
@@ -322,8 +323,8 @@ function App() {
       // Check statuses
       if (!filters.statuses.includes(item.status)) return false
       
-      // Check SKU search
-      if (filters.skuSearch && !item.sku.toLowerCase().includes(filters.skuSearch.toLowerCase())) return false
+      // Check SKU search (now separate from filters)
+      if (skuSearch && !item.sku.toLowerCase().includes(skuSearch.toLowerCase())) return false
       
       // Check serienummer search
       if (filters.serienummerSearch && !item.serienummer.toLowerCase().includes(filters.serienummerSearch.toLowerCase())) return false
@@ -344,7 +345,7 @@ function App() {
       
       return true
     })
-  }, [items, filters])
+  }, [items, filters, skuSearch])
 
   const saveEditModal = async () => {
     if (!selectedItemModal) return
@@ -462,6 +463,8 @@ function App() {
               onFilterClick={() => setShowFilterModal(true)}
               onAddClick={() => setShowAddModal(true)}
               onSettingsClick={() => setShowSettings(true)}
+              skuSearch={skuSearch}
+              onSkuSearchChange={setSkuSearch}
             />
 
         {showAddModal && (
