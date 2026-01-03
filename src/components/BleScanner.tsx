@@ -118,6 +118,7 @@ export function BleScanner() {
     } finally {
       setScanning(false)
     }
+  }
 
   const connectDevice = async (device: BluetoothDevice) => {
     try {
