@@ -7,6 +7,7 @@ import { ProductActions } from './components/ProductActions'
 import { Settings } from './components/Settings'
 import { FilterModal, FilterState } from './components/FilterModal'
 import { Login } from './components/Login'
+import { BleScanner } from './components/BleScanner'
 import { supabase } from './lib/supabase'
 import type { InventoryItem, ProductType, ActionRecord, Action } from './types'
 import { PRODUCT_LABELS, CONDITION_LABELS, STATUS_LABELS, JOYCON_COLORS, DUALSENSE_COLORS, SWITCH_LITE_COLORS, XBOX_COLORS } from './types'
@@ -17,6 +18,7 @@ function App() {
   const [items, setItems] = useState<InventoryItem[]>([])
   const [actions, setActions] = useState<ActionRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState<'inventory' | 'scanner'>('inventory')
   const [showAddModal, setShowAddModal] = useState(false)
   const [addItemType, setAddItemType] = useState<ProductType>('switch_joycon_left')
   const [showSettings, setShowSettings] = useState(false)
@@ -416,19 +418,35 @@ function App() {
   return (
     <div className="app">
       <Header onLogout={handleLogout} userEmail={user?.email} />
+      <nav className="page-nav">
+        <button 
+          className={`nav-button ${currentPage === 'inventory' ? 'active' : ''}`}
+          onClick={() => setCurrentPage('inventory')}
+        >
+          📦 Voorraad
+        </button>
+        <button 
+          className={`nav-button ${currentPage === 'scanner' ? 'active' : ''}`}
+          onClick={() => setCurrentPage('scanner')}
+        >
+          📱 Bluetooth Scanner
+        </button>
+      </nav>
       <main className="container">
-        <InventoryListView 
-          items={filteredItems} 
-          onDelete={deleteItem}
-          onUpdate={updateItem}
-          onEditCard={(item) => {
-            setSelectedItemModal(item)
-          }}
-          totalItems={items.length}
-          onFilterClick={() => setShowFilterModal(true)}
-          onAddClick={() => setShowAddModal(true)}
-          onSettingsClick={() => setShowSettings(true)}
-        />
+        {currentPage === 'inventory' ? (
+          <>
+            <InventoryListView 
+              items={filteredItems} 
+              onDelete={deleteItem}
+              onUpdate={updateItem}
+              onEditCard={(item) => {
+                setSelectedItemModal(item)
+              }}
+              totalItems={items.length}
+              onFilterClick={() => setShowFilterModal(true)}
+              onAddClick={() => setShowAddModal(true)}
+              onSettingsClick={() => setShowSettings(true)}
+            />
 
         {showAddModal && (
           <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
@@ -1020,6 +1038,10 @@ function App() {
           onApply={(newFilters) => setFilters(newFilters)}
           currentFilters={filters}
         />
+          </>
+        ) : (
+          <BleScanner />
+        )}
       </main>
     </div>
   )
