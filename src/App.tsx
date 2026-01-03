@@ -52,6 +52,23 @@ function App() {
   const [skuSearch, setSkuSearch] = useState('')
   const [prefillData, setPrefillData] = useState<{ serialNumber?: string, color?: string } | null>(null)
 
+  // Handle SKU search and open item details if found
+  const handleSkuSearchChange = (value: string) => {
+    setSkuSearch(value)
+    
+    // If value is provided (from QR scan), try to find and open the item
+    if (value) {
+      const foundItem = items.find(item => 
+        item.sku.toLowerCase() === value.toLowerCase()
+      )
+      
+      if (foundItem) {
+        setSelectedItemModal(foundItem)
+        setSelectedItemTab('info')
+      }
+    }
+  }
+
   // Check authentication on mount
   useEffect(() => {
     checkAuth()
@@ -465,7 +482,7 @@ function App() {
               onAddClick={() => setShowAddModal(true)}
               onSettingsClick={() => setShowSettings(true)}
               skuSearch={skuSearch}
-              onSkuSearchChange={setSkuSearch}
+              onSkuSearchChange={handleSkuSearchChange}
             />
 
         {showAddModal && (
@@ -724,10 +741,11 @@ function App() {
                         <div className="barcode-container">
                           <QRCodeSVG 
                             value={selectedItemModal.sku} 
-                            size={128}
+                            size={200}
                             bgColor="#1a1a1a"
                             fgColor="#ffffff"
-                            level="M"
+                            level="H"
+                            includeMargin={true}
                           />
                         </div>
                       </div>

@@ -75,9 +75,9 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     // Get image data
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
     
-    // Try to decode QR code
+    // Try to decode QR code with all inversion attempts
     const code = jsQR(imageData.data, imageData.width, imageData.height, {
-      inversionAttempts: 'dontInvert'
+      inversionAttempts: 'attemptBoth'
     })
     
     if (code && code.data) {
