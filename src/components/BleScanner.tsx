@@ -9,6 +9,10 @@ interface BluetoothDevice {
   rawDevice?: any
   services?: string[]
   serialNumber?: string
+  bodyColor?: string
+  buttonColor?: string
+  leftGripColor?: string
+  rightGripColor?: string
 }
 
 export function BleScanner() {
@@ -86,6 +90,11 @@ export function BleScanner() {
     try {
       setError('')
       
+      // Check if already connected
+      if (device.connected) {
+        return
+      }
+      
       // Check if this is a WebHID device
       if (device.id.startsWith('hid-')) {
         const hidDevice = device.rawDevice as any
@@ -93,10 +102,20 @@ export function BleScanner() {
           try {
             await hidDevice.open()
           } catch (openErr: any) {
-            // If device is busy, retry after a short delay
-            if (openErr.message.includes('operation') || openErr.message.includes('in progress')) {
+            // If device is already open, that's fine
+            if (openErr.message.includes('already open') || openErr.message.includes('already')) {
+              // Device is already open, continue
+            } else if (openErr.message.includes('operation') || openErr.message.includes('in progress')) {
+              // If device is busy, retry after a short delay
               await new Promise(r => setTimeout(r, 300))
-              await hidDevice.open()
+              try {
+                await hidDevice.open()
+              } catch (retryErr: any) {
+                // If still fails with "already open", that's ok
+                if (!retryErr.message.includes('already')) {
+                  throw retryErr
+                }
+              }
             } else {
               throw openErr
             }
@@ -194,6 +213,136 @@ export function BleScanner() {
     }
   }
 
+  const getJoyConColor = async (hidDevice: any): Promise<{ body?: string, buttons?: string, leftGrip?: string, rightGrip?: string }> => {
+    try {
+      const colors: any = {}
+      
+      // Read body color: 0x6050 - 0x6052 (3 bytes RGB)
+      console.log('[Color] Reading body color from 0x6050...')
+      const bodyColor = await readSPIColor(hidDevice, 0x6050, 0x03)
+      if (bodyColor) {
+        colors.body = bodyColor
+        console.log('[Color] Body color:', bodyColor)
+      }
+      
+      // Read buttons color: 0x6053 - 0x6055 (3 bytes RGB)
+      console.log('[Color] Reading buttons color from 0x6053...')
+      const buttonsColor = await readSPIColor(hidDevice, 0x6053, 0x03)
+      if (buttonsColor) {
+        colors.buttons = buttonsColor
+        console.log('[Color] Buttons color:', buttonsColor)
+      }
+      
+      // Read left grip color: 0x6056 - 0x6058 (3 bytes RGB, Pro only)
+      console.log('[Color] Reading left grip color from 0x6056...')
+      const leftGripColor = await readSPIColor(hidDevice, 0x6056, 0x03)
+      if (leftGripColor) {
+        colors.leftGrip = leftGripColor
+        console.log('[Color] Left grip color:', leftGripColor)
+      }
+      
+      // Read right grip color: 0x6059 - 0x605B (3 bytes RGB, Pro only)
+      console.log('[Color] Reading right grip color from 0x6059...')
+      const rightGripColor = await readSPIColor(hidDevice, 0x6059, 0x03)
+      if (rightGripColor) {
+        colors.rightGrip = rightGripColor
+        console.log('[Color] Right grip color:', rightGripColor)
+      }
+      
+      return colors
+    } catch (err: any) {
+      console.error('[Color] Error reading colors:', err)
+      return {}
+    }
+  }
+
+  const readSPIColor = async (hidDevice: any, offset: number, size: number): Promise<string | null> => {
+    return new Promise<string | null>((resolve) => {
+      const timeout = setTimeout(() => {
+        hidDevice.removeEventListener('inputreport', inputHandler)
+        console.log(`[SPI] Timeout reading from 0x${offset.toString(16).toUpperCase().padStart(4, '0')}`)
+        resolve(null)
+      }, 800)
+      
+      const inputHandler = (event: any) => {
+        try {
+          const data = event.data
+          
+          if (data.byteLength >= 0x14 + size) {
+            const byte0D = data.getUint8(0xD)
+            const byte0E = data.getUint8(0xE)
+            const responseCmdId = byte0D | (byte0E << 8)
+            
+            // Check for SPI read response (0x1090)
+            if (responseCmdId === 0x1090) {
+              // Check if this is the response for our offset
+              const responseOffset = data.getUint16(0x0F, true)
+              
+              if (responseOffset === offset) {
+                clearTimeout(timeout)
+                hidDevice.removeEventListener('inputreport', inputHandler)
+                
+                // Extract RGB bytes from offset 0x14 (payload starts there)
+                const bytes: number[] = []
+                for (let i = 0; i < size; i++) {
+                  bytes.push(data.getUint8(0x14 + i))
+                }
+                
+                console.log(`[SPI] Read from 0x${offset.toString(16).toUpperCase().padStart(4, '0')}: ${bytes.map(b => '0x' + b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}`)
+                
+                // Format as #RRGGBB (bytes are already in RGB order)
+                if (bytes.length >= 3) {
+                  const r = bytes[0]
+                  const g = bytes[1]
+                  const b = bytes[2]
+                  
+                  // Check if color is valid (not all zeros, not all 0xFF)
+                  if ((r !== 0 || g !== 0 || b !== 0) && !(r === 0xFF && g === 0xFF && b === 0xFF)) {
+                    const color = `#${r.toString(16).toUpperCase().padStart(2, '0')}${g.toString(16).toUpperCase().padStart(2, '0')}${b.toString(16).toUpperCase().padStart(2, '0')}`
+                    console.log(`[SPI] Formatted color: ${color} (RGB ${r}, ${g}, ${b})`)
+                    resolve(color)
+                  } else {
+                    console.log(`[SPI] Color appears invalid or default: RGB(${r}, ${g}, ${b})`)
+                    resolve(null)
+                  }
+                } else {
+                  console.log(`[SPI] Insufficient bytes read`)
+                  resolve(null)
+                }
+              }
+            }
+          }
+        } catch (err) {
+          // Ignore other reports
+        }
+      }
+      
+      hidDevice.addEventListener('inputreport', inputHandler)
+      
+      // Send the SPI read command
+      try {
+        const buf = new Uint8Array(48)
+        buf[0] = 0x01                          // cmd: output report
+        buf[1] = 0x00                          // timer
+        buf[9] = 0x10                          // subcmd: read SPI
+        buf[10] = offset & 0xFF                // offset low byte (little-endian)
+        buf[11] = (offset >> 8) & 0xFF         // offset high byte
+        buf[12] = (offset >> 16) & 0xFF        // offset byte 3
+        buf[13] = (offset >> 24) & 0xFF        // offset byte 4
+        buf[14] = size & 0xFF                  // size low byte
+        buf[15] = (size >> 8) & 0xFF           // size high byte
+        
+        console.log(`[SPI] Sending read command for offset 0x${offset.toString(16).toUpperCase().padStart(4, '0')}, size ${size}`)
+        hidDevice.sendReport(0x01, buf)
+      } catch (err: any) {
+        clearTimeout(timeout)
+        hidDevice.removeEventListener('inputreport', inputHandler)
+        console.error(`[SPI] Error sending read command:`, err)
+        resolve(null)
+      }
+    })
+  }
+
   const readWebHIDData = async (hidDevice: any, device: BluetoothDevice) => {
     try {
       // Get serial number
@@ -201,6 +350,20 @@ export function BleScanner() {
       if (serialNumber) {
         setDevices(prev => prev.map(d => 
           d.id === device.id ? { ...d, serialNumber } : d
+        ))
+      }
+      
+      // Get colors
+      const colors = await getJoyConColor(hidDevice)
+      if (colors.body || colors.buttons || colors.leftGrip || colors.rightGrip) {
+        setDevices(prev => prev.map(d => 
+          d.id === device.id ? { 
+            ...d, 
+            bodyColor: colors.body,
+            buttonColor: colors.buttons,
+            leftGripColor: colors.leftGrip,
+            rightGripColor: colors.rightGrip
+          } : d
         ))
       }
       
@@ -303,6 +466,73 @@ export function BleScanner() {
                     Services: {device.services.join(', ')}
                   </div>
                 )}
+                
+                {/* Color Display */}
+                {(device.bodyColor || device.buttonColor || device.leftGripColor || device.rightGripColor) && (
+                  <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {device.bodyColor && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <div 
+                          style={{ 
+                            width: '20px', 
+                            height: '20px', 
+                            backgroundColor: device.bodyColor,
+                            border: '1px solid #333',
+                            borderRadius: '3px'
+                          }}
+                          title={`Body: ${device.bodyColor}`}
+                        />
+                        <span style={{ fontSize: '0.75em', color: '#666' }}>Lichaam</span>
+                      </div>
+                    )}
+                    {device.buttonColor && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <div 
+                          style={{ 
+                            width: '20px', 
+                            height: '20px', 
+                            backgroundColor: device.buttonColor,
+                            border: '1px solid #333',
+                            borderRadius: '3px'
+                          }}
+                          title={`Buttons: ${device.buttonColor}`}
+                        />
+                        <span style={{ fontSize: '0.75em', color: '#666' }}>Knoppen</span>
+                      </div>
+                    )}
+                    {device.leftGripColor && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <div 
+                          style={{ 
+                            width: '20px', 
+                            height: '20px', 
+                            backgroundColor: device.leftGripColor,
+                            border: '1px solid #333',
+                            borderRadius: '3px'
+                          }}
+                          title={`Left Grip: ${device.leftGripColor}`}
+                        />
+                        <span style={{ fontSize: '0.75em', color: '#666' }}>L-Grip</span>
+                      </div>
+                    )}
+                    {device.rightGripColor && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <div 
+                          style={{ 
+                            width: '20px', 
+                            height: '20px', 
+                            backgroundColor: device.rightGripColor,
+                            border: '1px solid #333',
+                            borderRadius: '3px'
+                          }}
+                          title={`Right Grip: ${device.rightGripColor}`}
+                        />
+                        <span style={{ fontSize: '0.75em', color: '#666' }}>R-Grip</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 <div className="device-status">
                   {device.connected ? '✓ Verbonden' : 'Niet verbonden'}
                 </div>
