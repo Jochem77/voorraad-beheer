@@ -21,33 +21,18 @@ export function BleScanner() {
   const loadPairedDevices = async () => {
     try {
       console.log('📱 Laden van al gekoppelde apparaten...')
+      setError('')
+      
       if (!(navigator as any).bluetooth) {
         console.log('❌ Bluetooth Web API niet beschikbaar')
         setError('⚠️ Bluetooth Web API niet beschikbaar')
         return
       }
 
-      // Haal alle eerder verbonden apparaten op
-      console.log('getDevices beschikbaar?', typeof (navigator as any).bluetooth.getDevices)
-      const devices = await (navigator as any).bluetooth.getDevices()
-      console.log(`✅ ${devices.length} eerder verbonden apparaten gevonden`)
-      
-      if (devices.length === 0) {
-        console.log('⚠️ Geen apparaten gevonden. Dit kan betekenen:')
-        console.log('  1. Joy-Con is niet in pairing mode')
-        console.log('  2. Joy-Con is niet gekoppeld via deze browser')
-        console.log('  3. Browser ondersteunt getDevices() niet')
-        setError('❌ Geen gekoppelde apparaten gevonden. Probeer "🎮 Joy-Con Zoeken" in plaats daarvan.')
-      } else {
-        setError('')
-      }
-      
-      devices.forEach((device: any) => {
-        console.log(`  - Naam: "${device.name}", ID: ${device.id}, GATT connected: ${device.gatt?.connected}`)
-        addDevice(device)
-      })
+      console.log('💡 Tip: Klik "📱 Alle Apparaten" om gekoppelde apparaten te selecteren')
+      setError('💡 Klik op "📱 Alle Apparaten" om je gekoppelde Joy-Con te selecteren')
     } catch (err: any) {
-      console.error('❌ Fout bij laden gekoppelde apparaten:', err.message, err.name)
+      console.error('❌ Fout:', err.message)
       setError(`Fout: ${err.message}`)
     }
   }
@@ -228,15 +213,14 @@ export function BleScanner() {
       {error && <div className="error-message">{error}</div>}
 
       <div className="scanner-info">
-        <p>💡 <strong>Tips:</strong></p>
-        <ul>
-          <li><strong>Beste manier:</strong> Koppel je Joy-Con eerst in Windows Bluetooth instellingen</li>
-          <li>Klik dan hier op <strong>"🔄 Vernieuwen"</strong> om gekoppelde apparaten te zien</li>
-          <li>Je Joy-Con verschijnt dan in de lijst hieronder</li>
-          <li>Als dat niet werkt, probeer <strong>"🎮 Joy-Con Zoeken"</strong> (nieuwe scan)</li>
-          <li>Of selecteer handmatig via <strong>"📱 Alle Apparaten"</strong></li>
-          <li>Open Browser Console (F12 → Console) om debug informatie te zien</li>
-        </ul>
+        <p>💡 <strong>Hoe je Joy-Con te verbinden:</strong></p>
+        <ol style={{ paddingLeft: '1.5rem', marginTop: '0.5rem' }}>
+          <li>Koppel je Joy-Con in <strong>Windows Bluetooth instellingen</strong> (Settings → Devices → Bluetooth)</li>
+          <li>Kom terug naar deze app</li>
+          <li>Klik hier op <strong>"📱 Alle Apparaten"</strong></li>
+          <li>Selecteer je Joy-Con uit de lijst die verschijnt</li>
+          <li>Je Joy-Con verschijnt nu hieronder in de app!</li>
+        </ol>
       </div>
 
       {devices.length === 0 && !scanning && (
