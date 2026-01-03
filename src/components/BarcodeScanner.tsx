@@ -62,32 +62,25 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
 
       console.log('Starting camera with ID:', cameraId)
       
-      // Configure scanner for QR code with optimized settings
+      // Simplified configuration - html5-qrcode scans QR codes by default
       const config: any = {
-        fps: 30,
-        qrbox: 300,
-        aspectRatio: 1.777778,
+        fps: 10,
+        qrbox: 250,
         disableFlip: false,
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.QR_CODE
-        ],
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true
-        },
         videoConstraints: {
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        },
-        rememberLastUsedCamera: false
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
       }
       
       console.log('Scanner config:', config)
+      console.log('⏳ Starting QR scanner...')
       
       await scanner.start(
         cameraId,
         config,
         (decodedText) => {
-          console.log('✅ Barcode successfully scanned:', decodedText)
+          console.log('✅ QR Code scanned successfully:', decodedText)
           console.log('Calling onScan callback...')
           
           // Call the callback first
@@ -100,18 +93,14 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           }, 100)
         },
         (errorMessage) => {
-          // Ignore continuous scanning errors
-          if (!errorMessage.includes('NotFoundException') && !errorMessage.includes('No MultiFormat Readers')) {
-            console.debug('Scan error:', errorMessage)
-          }
+          // Log all errors for debugging
+          console.log('📸 Scanning frame:', errorMessage)
         }
       )
       
-      // Log camera info for debugging
-      console.log('Scanner started, waiting for QR code detection...')
+      console.log('✅ Scanner started successfully, camera active')
       
       setCameraStarted(true)
-      console.log('Camera started successfully')
       
     } catch (err: any) {
       console.error('Failed to start camera:', err)
