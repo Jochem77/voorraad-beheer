@@ -22,11 +22,17 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         if (devices && devices.length > 0) {
           console.log('Available cameras:', devices)
           setCameras(devices)
-          // Always use camera 0
-          setSelectedCamera(devices[0].id)
-          // Automatically start scanning with camera 0
+          // Find first back camera
+          const backCamera = devices.find(d => 
+            d.label.toLowerCase().includes('back') || 
+            d.label.toLowerCase().includes('rear') ||
+            d.label.toLowerCase().includes('achter')
+          )
+          const cameraId = backCamera?.id || devices[devices.length - 1].id
+          setSelectedCamera(cameraId)
+          // Automatically start scanning with back camera
           setTimeout(() => {
-            startScanning(devices[0].id)
+            startScanning(cameraId)
           }, 100)
         } else {
           setError('Geen camera\'s gevonden op dit apparaat')
