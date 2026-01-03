@@ -83,7 +83,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       // Cleanup scanner when modal closes
       stopScanning()
       if (scannerRef.current) {
-        scannerRef.current.clear().catch(console.error)
+        scannerRef.current.clear()
         scannerRef.current = null
       }
       setError(null)
