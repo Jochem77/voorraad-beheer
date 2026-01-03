@@ -62,10 +62,10 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
 
       console.log('Starting camera with ID:', cameraId)
       
-      // Configure scanner for QR code with better settings for laptop webcams
+      // Configure scanner for QR code with optimized settings
       const config: any = {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
+        fps: 30,
+        qrbox: 300,
         aspectRatio: 1.777778,
         disableFlip: false,
         formatsToSupport: [
@@ -75,10 +75,10 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           useBarCodeDetectorIfSupported: true
         },
         videoConstraints: {
-          facingMode: "environment",
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        rememberLastUsedCamera: false
       }
       
       console.log('Scanner config:', config)
@@ -107,48 +107,8 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         }
       )
       
-      // Apply advanced camera settings after starting
-      setTimeout(async () => {
-        try {
-          const videoElement = document.querySelector('#barcode-reader video') as HTMLVideoElement
-          if (videoElement && videoElement.srcObject) {
-            const stream = videoElement.srcObject as MediaStream
-            const track = stream.getVideoTracks()[0]
-            
-            const capabilities = track.getCapabilities()
-            console.log('Camera capabilities:', capabilities)
-            
-            const constraints: any = {}
-            
-            // Enable autofocus if supported
-            if ('focusMode' in capabilities) {
-              constraints.focusMode = 'continuous'
-            }
-            
-            // Adjust exposure if supported
-            if ('exposureMode' in capabilities) {
-              constraints.exposureMode = 'continuous'
-            }
-            
-            // Reduce brightness if supported
-            if ('brightness' in capabilities) {
-              constraints.brightness = (capabilities as any).brightness.min + ((capabilities as any).brightness.max - (capabilities as any).brightness.min) * 0.4
-            }
-            
-            // Apply torch if available (helps with focus and exposure)
-            if ((capabilities as any).torch) {
-              constraints.torch = false // Start with torch off
-            }
-            
-            if (Object.keys(constraints).length > 0) {
-              await track.applyConstraints({ advanced: [constraints] })
-              console.log('Applied camera constraints:', constraints)
-            }
-          }
-        } catch (err) {
-          console.log('Could not apply advanced camera settings:', err)
-        }
-      }, 500)
+      // Log camera info for debugging
+      console.log('Scanner started, waiting for QR code detection...')
       
       setCameraStarted(true)
       console.log('Camera started successfully')
