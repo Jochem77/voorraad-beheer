@@ -54,11 +54,14 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
 
       console.log('Starting camera with ID:', cameraId)
       
+      // Get the video element and apply constraints after starting
       await scanner.start(
         cameraId,
         {
-          fps: 10,
-          qrbox: { width: 250, height: 150 }
+          fps: 5, // Lower FPS for better focus and exposure
+          qrbox: { width: 300, height: 180 }, // Larger scan area
+          aspectRatio: 1.777778,
+          disableFlip: false
         },
         (decodedText) => {
           console.log('Barcode scanned:', decodedText)
@@ -73,6 +76,49 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           }
         }
       )
+      
+      // Apply advanced camera settings after starting
+      setTimeout(async () => {
+        try {
+          const videoElement = document.querySelector('#barcode-reader video') as HTMLVideoElement
+          if (videoElement && videoElement.srcObject) {
+            const stream = videoElement.srcObject as MediaStream
+            const track = stream.getVideoTracks()[0]
+            
+            const capabilities = track.getCapabilities()
+            console.log('Camera capabilities:', capabilities)
+            
+            const constraints: any = {}
+            
+            // Enable autofocus if supported
+            if ('focusMode' in capabilities) {
+              constraints.focusMode = 'continuous'
+            }
+            
+            // Adjust exposure if supported
+            if ('exposureMode' in capabilities) {
+              constraints.exposureMode = 'continuous'
+            }
+            
+            // Reduce brightness if supported
+            if ('brightness' in capabilities) {
+              constraints.brightness = (capabilities as any).brightness.min + ((capabilities as any).brightness.max - (capabilities as any).brightness.min) * 0.4
+            }
+            
+            // Apply torch if available (helps with focus and exposure)
+            if ((capabilities as any).torch) {
+              constraints.torch = false // Start with torch off
+            }
+            
+            if (Object.keys(constraints).length > 0) {
+              await track.applyConstraints({ advanced: [constraints] })
+              console.log('Applied camera constraints:', constraints)
+            }
+          }
+        } catch (err) {
+          console.log('Could not apply advanced camera settings:', err)
+        }
+      }, 500)
       
       setCameraStarted(true)
       setIsScanning(true)
