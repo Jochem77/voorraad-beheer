@@ -258,66 +258,69 @@ export function BleScanner() {
 
   const readSPIColor = async (hidDevice: any, offset: number, size: number): Promise<string | null> => {
     return new Promise<string | null>((resolve) => {
-      const timeout = setTimeout(() => {
-        hidDevice.removeEventListener('inputreport', inputHandler)
-        console.log(`[SPI] Timeout reading from 0x${offset.toString(16).toUpperCase().padStart(4, '0')}`)
-        resolve(null)
-      }, 800)
+      let resolved = false
+      const timeoutId = setTimeout(() => {
+        if (!resolved) {
+          resolved = true
+          hidDevice.removeEventListener('inputreport', inputHandler)
+          console.log(`[SPI] Timeout reading from 0x${offset.toString(16).toUpperCase().padStart(4, '0')}`)
+          resolve(null)
+        }
+      }, 1500)
       
       const inputHandler = (event: any) => {
+        if (resolved) return
+        
         try {
           const data = event.data
           
-          if (data.byteLength >= 0x14 + size) {
+          if (data.byteLength >= 0x15 + size) {
             const byte0D = data.getUint8(0xD)
             const byte0E = data.getUint8(0xE)
-            const responseCmdId = byte0D | (byte0E << 8)
+            const byte0F = data.getUint8(0xF)
             
-            // Check for SPI read response (0x1090)
-            if (responseCmdId === 0x1090) {
-              // Check if this is the response for our offset
-              const responseOffset = data.getUint16(0x0F, true)
+            // Response format: byte0E-0xF contains offset in little-endian
+            // byte0D = 0x10 (subcmd response indicator)
+            const offsetLow = byte0E
+            const offsetHigh = byte0F
+            const responseOffset = offsetLow | (offsetHigh << 8)
+            
+            if (byte0D === 0x10 && responseOffset === offset) {
+              resolved = true
+              clearTimeout(timeoutId)
+              hidDevice.removeEventListener('inputreport', inputHandler)
               
-              if (responseOffset === offset) {
-                clearTimeout(timeout)
-                hidDevice.removeEventListener('inputreport', inputHandler)
+              // Extract RGB bytes - they start at 0x13 (not 0x14!)
+              const bytes: number[] = []
+              for (let i = 0; i < size; i++) {
+                bytes.push(data.getUint8(0x13 + i))
+              }
+              
+              console.log(`[SPI] ✓ Matched! Read from 0x${offset.toString(16).toUpperCase().padStart(4, '0')}: ${bytes.map(b => '0x' + b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}`)
+              
+              // Format as #RRGGBB (bytes are in RGB order)
+              if (bytes.length >= 3) {
+                const r = bytes[0]
+                const g = bytes[1]
+                const b = bytes[2]
                 
-                // Extract RGB bytes from offset 0x14 (payload starts there)
-                const bytes: number[] = []
-                for (let i = 0; i < size; i++) {
-                  bytes.push(data.getUint8(0x14 + i))
-                }
-                
-                console.log(`[SPI] Read from 0x${offset.toString(16).toUpperCase().padStart(4, '0')}: ${bytes.map(b => '0x' + b.toString(16).toUpperCase().padStart(2, '0')).join(' ')}`)
-                
-                // Format as #RRGGBB (bytes are already in RGB order)
-                if (bytes.length >= 3) {
-                  const r = bytes[0]
-                  const g = bytes[1]
-                  const b = bytes[2]
-                  
-                  // Check if color is valid (not all zeros, not all 0xFF)
-                  if ((r !== 0 || g !== 0 || b !== 0) && !(r === 0xFF && g === 0xFF && b === 0xFF)) {
-                    const color = `#${r.toString(16).toUpperCase().padStart(2, '0')}${g.toString(16).toUpperCase().padStart(2, '0')}${b.toString(16).toUpperCase().padStart(2, '0')}`
-                    console.log(`[SPI] Formatted color: ${color} (RGB ${r}, ${g}, ${b})`)
-                    resolve(color)
-                  } else {
-                    console.log(`[SPI] Color appears invalid or default: RGB(${r}, ${g}, ${b})`)
-                    resolve(null)
-                  }
-                } else {
-                  console.log(`[SPI] Insufficient bytes read`)
-                  resolve(null)
-                }
+                // Accept any valid RGB color
+                const color = `#${r.toString(16).toUpperCase().padStart(2, '0')}${g.toString(16).toUpperCase().padStart(2, '0')}${b.toString(16).toUpperCase().padStart(2, '0')}`
+                console.log(`[SPI] ✓ Color: ${color} (RGB ${r}, ${g}, ${b})`)
+                resolve(color)
+              } else {
+                console.log(`[SPI] Insufficient bytes read`)
+                resolve(null)
               }
             }
           }
         } catch (err) {
-          // Ignore other reports
+          console.log(`[SPI] Error processing input report:`, err)
         }
       }
       
       hidDevice.addEventListener('inputreport', inputHandler)
+      console.log(`[SPI] Added input report listener for offset 0x${offset.toString(16).toUpperCase().padStart(4, '0')}`)
       
       // Send the SPI read command
       try {
@@ -335,7 +338,8 @@ export function BleScanner() {
         console.log(`[SPI] Sending read command for offset 0x${offset.toString(16).toUpperCase().padStart(4, '0')}, size ${size}`)
         hidDevice.sendReport(0x01, buf)
       } catch (err: any) {
-        clearTimeout(timeout)
+        resolved = true
+        clearTimeout(timeoutId)
         hidDevice.removeEventListener('inputreport', inputHandler)
         console.error(`[SPI] Error sending read command:`, err)
         resolve(null)
