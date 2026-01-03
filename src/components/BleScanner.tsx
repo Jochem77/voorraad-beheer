@@ -17,27 +17,43 @@ export function BleScanner() {
     try {
       setError('')
       setScanning(true)
-      setDevices([])
 
-      const device = await (navigator as any).bluetooth.requestDevice({
+      // Probeer Joy-Con en andere controllers specifiek
+      const options = {
+        acceptAllDevices: false,
+        optionalServices: [
+          'generic_access',
+          '000000d1-0000-1000-8000-00805f9b34fb', // Joy-Con service
+          '0000181d-0000-1000-8000-00805f9b34fb'  // Motion service
+        ],
+        filters: [
+          { namePrefix: 'Joy-Con' },
+          { namePrefix: 'Pro Controller' },
+          { namePrefix: 'JC-' }
+        ]
+      } as any
+
+      try {
+        // Probeer eerst specifiek Joy-Con
+        const device = await (navigator as any).bluetooth.requestDevice(options)
+        if (device) {
+          addDevice(device)
+          return
+        }
+      } catch {
+        // Als specifiek niet werkt, probeer algemeen
+        setError('Joy-Con niet gevonden, probeer alle apparaten...')
+      }
+
+      // Fallback: scan alle apparaten
+      const allOptions = {
         acceptAllDevices: true,
         optionalServices: ['generic_access']
-      })
+      } as any
 
+      const device = await (navigator as any).bluetooth.requestDevice(allOptions)
       if (device) {
-        const newDevice: BluetoothDevice = {
-          id: device.id,
-          name: device.name || 'Onbekend apparaat',
-          rssi: 0,
-          connected: device.gatt?.connected || false
-        }
-        setDevices(prev => {
-          const existing = prev.find(d => d.id === newDevice.id)
-          if (existing) {
-            return prev.map(d => d.id === newDevice.id ? newDevice : d)
-          }
-          return [...prev, newDevice]
-        })
+        addDevice(device)
       }
     } catch (err: any) {
       if (err.name !== 'NotFoundError') {
@@ -47,6 +63,51 @@ export function BleScanner() {
       setScanning(false)
     }
   }
+
+  const addDevice = (device: any) => {
+    const newDevice: BluetoothDevice = {
+      id: device.id,
+      name: device.name || 'Onbekend apparaat',
+      rssi: 0,
+      connected: device.gatt?.connected || false
+    }
+    setDevices(prev => {
+      const existing = prev.find(d => d.id === newDevice.id)
+      if (existing) {
+        return prev.map(d => d.id === newDevice.id ? newDevice : d)
+      }
+      return [...prev, newDevice]
+    })
+  }
+
+  const startScanContinuous = async () => {
+    try {
+      setError('')
+      setScanning(true)
+      setDevices([])
+
+      // Probeer meerdere keren te scannen
+      for (let i = 0; i < 3; i++) {
+        try {
+          const device = await (navigator as any).bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: ['generic_access']
+          })
+          if (device) {
+            addDevice(device)
+          }
+        } catch (err: any) {
+          if (err.name === 'NotFoundError') {
+            continue
+          }
+          throw err
+        }
+      }
+    } catch (err: any) {
+      setError(`Fout: ${err.message || 'Kon apparaten niet scannen'}`)
+    } finally {
+      setScanning(false)
+    }
 
   const connectDevice = async (device: BluetoothDevice) => {
     try {
@@ -97,13 +158,24 @@ export function BleScanner() {
     <div className="ble-scanner">
       <div className="scanner-header">
         <h2>Bluetooth Apparaat Scanner</h2>
-        <button 
-          className="btn-scan" 
-          onClick={startScan}
-          disabled={scanning}
-        >
-          {scanning ? 'Scannen...' : 'Apparaat toevoegen'}
-        </button>
+        <div className="scanner-buttons">
+          <button 
+            className="btn-scan" 
+            onClick={startScan}
+            disabled={scanning}
+            title="Zoek Joy-Con en controllers"
+          >
+            {scanning ? 'Scannen...' : '🎮 Joy-Con Zoeken'}
+          </button>
+          <button 
+            className="btn-scan secondary" 
+            onClick={startScanContinuous}
+            disabled={scanning}
+            title="Zoek alle Bluetooth apparaten"
+          >
+            {scanning ? 'Scannen...' : '📱 Alle Apparaten'}
+          </button>
+        </div>
       </div>
 
       {error && <div className="error-message">{error}</div>}
