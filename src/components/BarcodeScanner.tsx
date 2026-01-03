@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode'
+import { Html5Qrcode, Html5QrcodeScannerState, CameraDevice } from 'html5-qrcode'
 import './BarcodeScanner.css'
 
 interface BarcodeScannerProps {
@@ -13,6 +13,28 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
   const [isScanning, setIsScanning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cameraStarted, setCameraStarted] = useState(false)
+  const [cameras, setCameras] = useState<CameraDevice[]>([])
+  const [selectedCamera, setSelectedCamera] = useState<string>('')
+
+  useEffect(() => {
+    if (isOpen && cameras.length === 0) {
+      // Get available cameras when modal opens
+      Html5Qrcode.getCameras().then(devices => {
+        if (devices && devices.length > 0) {
+          console.log('Available cameras:', devices)
+          setCameras(devices)
+          // Try to select back camera by default
+          const backCamera = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'))
+          setSelectedCamera(backCamera?.id || devices[devices.length - 1].id)
+        } else {
+          setError('Geen camera\'s gevonden op dit apparaat')
+        }
+      }).catch(err => {
+        console.error('Error getting cameras:', err)
+        setError('Kan camera lijst niet ophalen: ' + err.message)
+      })
+    }
+  }, [isOpen])
 
   const startScanning = async () => {
     try {
@@ -23,55 +45,34 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       }
 
       const scanner = scannerRef.current
+      const cameraId = selectedCamera || cameras[0]?.id
       
-      console.log('Starting camera...')
-      
-      // Try with simple constraints first for better compatibility
-      try {
-        await scanner.start(
-          { facingMode: 'environment' },
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 150 },
-            aspectRatio: 1.777778
-          },
-          (decodedText) => {
-            // Success callback
-            console.log('Barcode scanned:', decodedText)
-            onScan(decodedText)
-            stopScanning()
-            onClose()
-          },
-          (errorMessage) => {
-            // Error callback - ignore continuous scanning errors
-            if (!errorMessage.includes('NotFoundException') && !errorMessage.includes('No MultiFormat Readers')) {
-              console.debug('Scan error:', errorMessage)
-            }
-          }
-        )
-      } catch (envErr) {
-        // If environment camera fails, try without facingMode constraint
-        console.log('Retrying without facingMode constraint...')
-        await scanner.start(
-          'environment',
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 150 },
-            aspectRatio: 1.777778
-          },
-          (decodedText) => {
-            console.log('Barcode scanned:', decodedText)
-            onScan(decodedText)
-            stopScanning()
-            onClose()
-          },
-          (errorMessage) => {
-            if (!errorMessage.includes('NotFoundException') && !errorMessage.includes('No MultiFormat Readers')) {
-              console.debug('Scan error:', errorMessage)
-            }
-          }
-        )
+      if (!cameraId) {
+        setError('Geen camera geselecteerd')
+        return
       }
+
+      console.log('Starting camera with ID:', cameraId)
+      
+      await scanner.start(
+        cameraId,
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 150 }
+        },
+        (decodedText) => {
+          console.log('Barcode scanned:', decodedText)
+          onScan(decodedText)
+          stopScanning()
+          onClose()
+        },
+        (errorMessage) => {
+          // Ignore continuous scanning errors
+          if (!errorMessage.includes('NotFoundException') && !errorMessage.includes('No MultiFormat Readers')) {
+            console.debug('Scan error:', errorMessage)
+          }
+        }
+      )
       
       setCameraStarted(true)
       setIsScanning(true)
@@ -84,7 +85,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       } else if (err.name === 'NotFoundError') {
         setError('Geen camera gevonden op dit apparaat.')
       } else if (err.name === 'OverconstrainedError') {
-        setError('Camera ondersteunt de gevraagde instellingen niet. Probeer een andere camera.')
+        setError('Camera ondersteunt de gevraagde instellingen niet.')
       } else {
         setError('Kan camera niet starten: ' + (err.message || err.toString()))
       }
@@ -113,6 +114,8 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         scannerRef.current = null
       }
       setError(null)
+      setCameras([])
+      setSelectedCamera('')
       return
     }
   }, [isOpen])
@@ -128,16 +131,46 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         </div>
         <div className="barcode-scanner-content">
           <div id="barcode-reader"></div>
-          {!cameraStarted && !error && (
+          {!cameraStarted && !error && cameras.length > 0 && (
             <div className="scanner-loading">
+              {cameras.length > 1 && (
+                <div style={{ marginBottom: '1rem', width: '100%' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', color: '#aaa' }}>
+                    Selecteer camera:
+                  </label>
+                  <select 
+                    value={selectedCamera} 
+                    onChange={(e) => setSelectedCamera(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem',
+                      background: '#252525',
+                      border: '1px solid #444',
+                      borderRadius: '6px',
+                      color: '#fff'
+                    }}
+                  >
+                    {cameras.map(camera => (
+                      <option key={camera.id} value={camera.id}>
+                        {camera.label || `Camera ${camera.id}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <p>Klik op de knop om de camera te starten</p>
               <button 
                 onClick={startScanning}
                 className="btn-start-camera"
-                disabled={isScanning}
+                disabled={isScanning || !selectedCamera}
               >
                 📷 Start Camera
               </button>
+            </div>
+          )}
+          {!cameraStarted && !error && cameras.length === 0 && (
+            <div className="scanner-loading">
+              <p>Camera's worden geladen...</p>
             </div>
           )}
           {error && (
@@ -146,6 +179,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
               <button 
                 onClick={startScanning}
                 className="btn-start-camera"
+                disabled={!selectedCamera}
               >
                 🔄 Probeer Opnieuw
               </button>
