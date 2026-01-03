@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './BleScanner.css'
 
 interface BluetoothDevice {
@@ -12,6 +12,31 @@ export function BleScanner() {
   const [devices, setDevices] = useState<BluetoothDevice[]>([])
   const [scanning, setScanning] = useState(false)
   const [error, setError] = useState('')
+
+  // Bij laden: toon al gekoppelde apparaten
+  useEffect(() => {
+    loadPairedDevices()
+  }, [])
+
+  const loadPairedDevices = async () => {
+    try {
+      console.log('📱 Laden van al gekoppelde apparaten...')
+      if (!(navigator as any).bluetooth) {
+        console.log('❌ Bluetooth Web API niet beschikbaar')
+        return
+      }
+
+      // Haal alle eerder verbonden apparaten op
+      const devices = await (navigator as any).bluetooth.getDevices()
+      console.log(`✅ ${devices.length} eerder verbonden apparaten gevonden:`)
+      devices.forEach((device: any) => {
+        console.log(`  - ${device.name} (${device.id})`)
+        addDevice(device)
+      })
+    } catch (err: any) {
+      console.error('Fout bij laden gekoppelde apparaten:', err)
+    }
+  }
 
   const addDevice = (device: any) => {
     console.log('✅ Device toevoegen:', device.name)
@@ -175,6 +200,14 @@ export function BleScanner() {
           >
             {scanning ? 'Scannen...' : '📱 Alle Apparaten'}
           </button>
+          <button 
+            className="btn-scan secondary" 
+            onClick={loadPairedDevices}
+            disabled={scanning}
+            title="Vernieuw gekoppelde apparaten"
+          >
+            🔄 Vernieuwen
+          </button>
         </div>
       </div>
 
@@ -183,11 +216,11 @@ export function BleScanner() {
       <div className="scanner-info">
         <p>💡 <strong>Tips:</strong></p>
         <ul>
-          <li>Zorg dat je Joy-Con in <strong>pairing mode</strong> staat (houd de kleine knopje ingedrukt tot LED knippert)</li>
-          <li>Plaats de Joy-Con dicht bij je computer (max 5 meter)</li>
-          <li>Sluit andere Bluetooth apparaten af om interferentie te voorkomen</li>
-          <li>Probeer eerst <strong>"🎮 Joy-Con Zoeken"</strong></li>
-          <li>Als dat niet werkt, probeer <strong>"📱 Alle Apparaten"</strong> en selecteer Joy-Con handmatig</li>
+          <li><strong>Beste manier:</strong> Koppel je Joy-Con eerst in Windows Bluetooth instellingen</li>
+          <li>Klik dan hier op <strong>"🔄 Vernieuwen"</strong> om gekoppelde apparaten te zien</li>
+          <li>Je Joy-Con verschijnt dan in de lijst hieronder</li>
+          <li>Als dat niet werkt, probeer <strong>"🎮 Joy-Con Zoeken"</strong> (nieuwe scan)</li>
+          <li>Of selecteer handmatig via <strong>"📱 Alle Apparaten"</strong></li>
           <li>Open Browser Console (F12 → Console) om debug informatie te zien</li>
         </ul>
       </div>
