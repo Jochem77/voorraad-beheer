@@ -101,6 +101,8 @@
   color: #10b981;
   font-weight: bold;
 }
+
+.no-devices {
   text-align: center;
   color: #999;
   padding: 3rem 1rem;
@@ -161,6 +163,8 @@
   color: #10b981;
   font-size: 0.8rem;
 }
+
+.device-status {
   font-family: monospace;
   margin-bottom: 0.5rem;
 }
