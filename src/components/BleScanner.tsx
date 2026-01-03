@@ -146,6 +146,7 @@ export function BleScanner() {
       setDevices([])
 
       console.log('🔍 Starten met scan voor alle apparaten...')
+      console.log('📋 Log alle gevonden devices in de browser console (F12)')
 
       const options = {
         acceptAllDevices: true,
@@ -160,12 +161,18 @@ export function BleScanner() {
       const device = await (navigator as any).bluetooth.requestDevice(options)
       if (device) {
         console.log('✅ Device gekozen:', device.name)
-        addDevice(device)
+        console.log('📊 Device details:', {
+          name: device.name,
+          id: device.id,
+          gatt: device.gatt,
+          connected: device.gatt?.connected
+        })
+        await addDevice(device)
       }
     } catch (err: any) {
       console.error('❌ Bluetooth error:', err.name, err.message)
       if (err.name === 'NotFoundError') {
-        setError('❌ Geen Bluetooth apparaten gevonden.')
+        setError('❌ Geen Bluetooth apparaten gevonden. Zet je Joy-Con in PAIRING MODE (houd de SYNC knop ingedrukt tot LEDs knipperen) en probeer opnieuw!')
       } else if (err.name === 'SecurityError') {
         setError('⚠️ Bluetooth toegang geweigerd.')
       } else if (err.name !== 'NotFoundError') {
@@ -256,17 +263,17 @@ export function BleScanner() {
       {error && <div className="error-message">{error}</div>}
 
       <div className="scanner-info">
-        <p>💡 <strong>Hoe je Joy-Con te verbinden:</strong></p>
+        <p>💡 <strong>Hoe je Joy-Con in PAIRING MODE te zetten (belangrijk!):</strong></p>
         <ol style={{ paddingLeft: '1.5rem', marginTop: '0.5rem' }}>
-          <li>Koppel je Joy-Con in <strong>Windows Bluetooth instellingen</strong> (Settings → Devices → Bluetooth)</li>
-          <li>Kom terug naar deze app</li>
-          <li>Klik hier op <strong>"📱 Alle Apparaten"</strong></li>
-          <li>Selecteer je Joy-Con uit de lijst die verschijnt</li>
-          <li>Je Joy-Con verschijnt nu hieronder in de app!</li>
+          <li><strong>Houd de SYNC knop ingedrukt</strong> (aan de zijkant van Joy-Con) totdat de LEDs <strong>snel knipperen</strong></li>
+          <li>Kom terug naar deze app (zorg dat je Joy-Con in pairing mode blijft!)</li>
+          <li>Klik op <strong>"📱 Alle Apparaten"</strong></li>
+          <li>Je Joy-Con zou nu in de device selector moeten verschijnen</li>
+          <li>Selecteer het apparaat dat lijkt op "Joy-Con L", "Joy-Con R", "JC-" of "Pro Controller"</li>
+          <li>Je Joy-Con verschijnt nu in de app lijst!</li>
         </ol>
-        <p style={{ fontSize: '0.9em', marginTop: '1rem', color: '#10b981' }}>
-          <strong>💡 Joy-Con identificatie:</strong><br/>
-          Zoek naar apparaten met Namen als "Joy-Con L", "Joy-Con R", "JC-", of "Pro Controller"
+        <p style={{ fontSize: '0.9em', marginTop: '1rem', backgroundColor: '#fef3c7', color: '#92400e', padding: '0.75rem', borderRadius: '6px', borderLeft: '3px solid #f59e0b' }}>
+          <strong>⚠️ BELANGRIJK:</strong> Joy-Con moet actief in PAIRING MODE zijn (LEDs knipperen), niet alleen gekoppeld in Windows!
         </p>
       </div>
 
