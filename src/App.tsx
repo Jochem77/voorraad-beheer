@@ -365,13 +365,13 @@ function App() {
     })
   }, [items, filters, skuSearch])
 
-  // Auto-open item details when only 1 result in filtered list
+  // Auto-open item details when only 1 result in filtered list (only when filter changes)
   useEffect(() => {
     if (filteredItems.length === 1 && !selectedItemModal) {
       setSelectedItemModal(filteredItems[0])
       setSelectedItemTab('info')
     }
-  }, [filteredItems.length, selectedItemModal])
+  }, [filteredItems])
 
   const saveEditModal = async () => {
     if (!selectedItemModal) return
