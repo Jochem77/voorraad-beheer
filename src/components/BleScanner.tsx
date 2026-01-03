@@ -6,6 +6,8 @@ interface BluetoothDevice {
   name: string
   rssi: number
   connected: boolean
+  rawDevice?: any
+  services?: string[]
 }
 
 export function BleScanner() {
@@ -37,14 +39,55 @@ export function BleScanner() {
     }
   }
 
-  const addDevice = (device: any) => {
+  const identifyDevice = async (device: any): Promise<string[]> => {
+    const services: string[] = []
+    try {
+      if (device.gatt?.connected) {
+        const server = await device.gatt.getPrimaryServices()
+        server.forEach((service: any) => {
+          // Voeg UUID toe
+          const uuid = service.uuid
+          // Voeg bekende namen toe
+          if (uuid.includes('180a')) services.push('Device Information Service')
+          if (uuid.includes('180f')) services.push('Battery Service')
+          if (uuid.includes('1812')) services.push('HID Service')
+          if (uuid.includes('000000d1')) services.push('Joy-Con Proprietary Service')
+          if (!services.length) services.push(`Service: ${uuid.substring(0, 8)}...`)
+        })
+      }
+    } catch (err) {
+      console.log('Kon services niet lezen:', err)
+    }
+    return services
+  }
+
+  const addDevice = async (device: any) => {
     console.log('✅ Device toevoegen:', device.name)
+    
+    // Probeer services te identificeren
+    let services: string[] = []
+    if (device.gatt?.connected) {
+      services = await identifyDevice(device)
+    }
+
     const newDevice: BluetoothDevice = {
       id: device.id,
       name: device.name || 'Onbekend apparaat',
       rssi: 0,
-      connected: device.gatt?.connected || false
+      connected: device.gatt?.connected || false,
+      rawDevice: device,
+      services: services
     }
+
+    // Herkenningstips
+    const isJoyCon = (name: string) => {
+      return name.toLowerCase().includes('joy') || 
+             name.toLowerCase().includes('jc-') ||
+             name.toLowerCase().includes('pro controller')
+    }
+
+    console.log('🏷️ Device type hint:', isJoyCon(newDevice.name) ? 'Lijkt op Joy-Con' : 'Ander type')
+
     setDevices(prev => {
       const existing = prev.find(d => d.id === newDevice.id)
       if (existing) {
@@ -221,6 +264,10 @@ export function BleScanner() {
           <li>Selecteer je Joy-Con uit de lijst die verschijnt</li>
           <li>Je Joy-Con verschijnt nu hieronder in de app!</li>
         </ol>
+        <p style={{ fontSize: '0.9em', marginTop: '1rem', color: '#10b981' }}>
+          <strong>💡 Joy-Con identificatie:</strong><br/>
+          Zoek naar apparaten met Namen als "Joy-Con L", "Joy-Con R", "JC-", of "Pro Controller"
+        </p>
       </div>
 
       {devices.length === 0 && !scanning && (
@@ -230,34 +277,47 @@ export function BleScanner() {
       )}
 
       <div className="devices-list">
-        {devices.map(device => (
-          <div key={device.id} className={`device-card ${device.connected ? 'connected' : ''}`}>
-            <div className="device-info">
-              <div className="device-name">{device.name}</div>
-              <div className="device-id">ID: {device.id.substring(0, 20)}...</div>
-              <div className="device-status">
-                {device.connected ? '✓ Verbonden' : 'Niet verbonden'}
+        {devices.map(device => {
+          const isLikelyJoyCon = device.name.toLowerCase().includes('joy') || 
+                                device.name.toLowerCase().includes('jc-') ||
+                                device.name.toLowerCase().includes('pro controller')
+          return (
+            <div key={device.id} className={`device-card ${device.connected ? 'connected' : ''}`}>
+              <div className="device-info">
+                <div className="device-name">
+                  {device.name}
+                  {isLikelyJoyCon && <span style={{ marginLeft: '0.5rem', color: '#10b981', fontWeight: 'bold' }}>🎮 Joy-Con</span>}
+                </div>
+                <div className="device-id">ID: {device.id.substring(0, 20)}...</div>
+                {device.services && device.services.length > 0 && (
+                  <div className="device-services" style={{ fontSize: '0.85em', color: '#888', marginTop: '0.5rem' }}>
+                    Services: {device.services.join(', ')}
+                  </div>
+                )}
+                <div className="device-status">
+                  {device.connected ? '✓ Verbonden' : 'Niet verbonden'}
+                </div>
+              </div>
+              <div className="device-actions">
+                {!device.connected ? (
+                  <button 
+                    className="btn-connect"
+                    onClick={() => connectDevice(device)}
+                  >
+                    Verbinden
+                  </button>
+                ) : (
+                  <button 
+                    className="btn-disconnect"
+                    onClick={() => disconnectDevice(device.id)}
+                  >
+                    Verbreken
+                  </button>
+                )}
               </div>
             </div>
-            <div className="device-actions">
-              {!device.connected ? (
-                <button 
-                  className="btn-connect"
-                  onClick={() => connectDevice(device)}
-                >
-                  Verbinden
-                </button>
-              ) : (
-                <button 
-                  className="btn-disconnect"
-                  onClick={() => disconnectDevice(device.id)}
-                >
-                  Verbreken
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
