@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Html5Qrcode, Html5QrcodeScannerState, CameraDevice, Html5QrcodeSupportedFormats } from 'html5-qrcode'
+import { Html5Qrcode, Html5QrcodeScannerState, CameraDevice } from 'html5-qrcode'
 import './BarcodeScanner.css'
 
 interface BarcodeScannerProps {
