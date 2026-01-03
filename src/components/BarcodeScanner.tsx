@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Html5Qrcode, Html5QrcodeScannerState, CameraDevice } from 'html5-qrcode'
+import jsQR from 'jsqr'
 import './BarcodeScanner.css'
 
 interface BarcodeScannerProps {
@@ -9,137 +9,118 @@ interface BarcodeScannerProps {
 }
 
 export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps) {
-  const scannerRef = useRef<Html5Qrcode | null>(null)
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+  const animationRef = useRef<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cameraStarted, setCameraStarted] = useState(false)
-  const [cameras, setCameras] = useState<CameraDevice[]>([])
-  const [selectedCamera, setSelectedCamera] = useState<string>('')
 
-  useEffect(() => {
-    if (isOpen && cameras.length === 0) {
-      // Get available cameras when modal opens
-      Html5Qrcode.getCameras().then(devices => {
-        if (devices && devices.length > 0) {
-          console.log('Available cameras:', devices)
-          setCameras(devices)
-          // Find first back camera
-          const backCamera = devices.find(d => 
-            d.label.toLowerCase().includes('back') || 
-            d.label.toLowerCase().includes('rear') ||
-            d.label.toLowerCase().includes('achter')
-          )
-          const cameraId = backCamera?.id || devices[devices.length - 1].id
-          setSelectedCamera(cameraId)
-          // Automatically start scanning with back camera
-          setTimeout(() => {
-            startScanning(cameraId)
-          }, 100)
-        } else {
-          setError('Geen camera\'s gevonden op dit apparaat')
-        }
-      }).catch(err => {
-        console.error('Error getting cameras:', err)
-        setError('Kan camera lijst niet ophalen: ' + err.message)
-      })
-    }
-  }, [isOpen])
-
-  const startScanning = async (cameraIdParam?: string) => {
+  const startScanning = async () => {
     try {
       setError(null)
+      console.log('⏳ Starting camera...')
       
-      if (!scannerRef.current) {
-        scannerRef.current = new Html5Qrcode('barcode-reader')
-      }
-
-      const scanner = scannerRef.current
-      const cameraId = cameraIdParam || selectedCamera || cameras[0]?.id
-      
-      if (!cameraId) {
-        setError('Geen camera geselecteerd')
-        return
-      }
-
-      console.log('Starting camera with ID:', cameraId)
-      
-      // Simplified configuration - html5-qrcode scans QR codes by default
-      const config: any = {
-        fps: 10,
-        qrbox: 250,
-        disableFlip: false,
-        videoConstraints: {
+      // Request camera access with back camera preference
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
           width: { ideal: 1280 },
           height: { ideal: 720 }
         }
+      })
+      
+      streamRef.current = stream
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+        setCameraStarted(true)
+        console.log('✅ Camera started successfully')
+        
+        // Start scanning loop
+        scanQRCode()
       }
-      
-      console.log('Scanner config:', config)
-      console.log('⏳ Starting QR scanner...')
-      
-      await scanner.start(
-        cameraId,
-        config,
-        (decodedText) => {
-          console.log('✅ QR Code scanned successfully:', decodedText)
-          console.log('Calling onScan callback...')
-          
-          // Call the callback first
-          onScan(decodedText)
-          
-          // Then stop and close
-          setTimeout(() => {
-            stopScanning()
-            onClose()
-          }, 100)
-        },
-        (errorMessage) => {
-          // Log all errors for debugging
-          console.log('📸 Scanning frame:', errorMessage)
-        }
-      )
-      
-      console.log('✅ Scanner started successfully, camera active')
-      
-      setCameraStarted(true)
-      
     } catch (err: any) {
       console.error('Failed to start camera:', err)
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         setError('Camera toegang geweigerd. Sta camera toegang toe in je browser instellingen.')
       } else if (err.name === 'NotFoundError') {
         setError('Geen camera gevonden op dit apparaat.')
-      } else if (err.name === 'OverconstrainedError') {
-        setError('Camera ondersteunt de gevraagde instellingen niet.')
       } else {
         setError('Kan camera niet starten: ' + (err.message || err.toString()))
       }
     }
   }
 
-  const stopScanning = async () => {
-    try {
-      if (scannerRef.current && scannerRef.current.getState() === Html5QrcodeScannerState.SCANNING) {
-        await scannerRef.current.stop()
-        console.log('Camera stopped')
-      }
-    } catch (err) {
-      console.error('Error stopping scanner:', err)
+  const scanQRCode = () => {
+    if (!videoRef.current || !canvasRef.current) return
+    
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    
+    if (!ctx || video.readyState !== video.HAVE_ENOUGH_DATA) {
+      animationRef.current = requestAnimationFrame(scanQRCode)
+      return
     }
+    
+    // Set canvas size to video size
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    
+    // Draw video frame to canvas
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    
+    // Get image data
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    
+    // Try to decode QR code
+    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+      inversionAttempts: 'dontInvert'
+    })
+    
+    if (code && code.data) {
+      console.log('✅ QR Code scanned successfully:', code.data)
+      onScan(code.data)
+      stopScanning()
+      onClose()
+      return
+    }
+    
+    // Continue scanning
+    animationRef.current = requestAnimationFrame(scanQRCode)
+  }
+
+  const stopScanning = () => {
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current)
+      animationRef.current = null
+    }
+    
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current = null
+    }
+    
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+    
     setCameraStarted(false)
+    console.log('Camera stopped')
   }
 
   useEffect(() => {
-    if (!isOpen) {
-      // Cleanup scanner when modal closes
+    if (isOpen) {
+      startScanning()
+    } else {
       stopScanning()
-      if (scannerRef.current) {
-        scannerRef.current.clear()
-        scannerRef.current = null
-      }
       setError(null)
-      setCameras([])
-      setSelectedCamera('')
-      return
+    }
+    
+    return () => {
+      stopScanning()
     }
   }, [isOpen])
 
@@ -149,21 +130,27 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     <div className="barcode-scanner-overlay" onClick={onClose}>
       <div className="barcode-scanner-modal" onClick={(e) => e.stopPropagation()}>
         <div className="barcode-scanner-header">
-          <h3>Scan SKU Barcode</h3>
+          <h3>Scan QR Code</h3>
           <button className="btn-close-scanner" onClick={onClose}>✕</button>
         </div>
         <div className="barcode-scanner-content">
-          <div id="barcode-reader"></div>
-          {!cameraStarted && !error && cameras.length > 0 && (
-            <div className="scanner-loading">
-              <p>Camera wordt gestart...</p>
-            </div>
-          )}
-          {!cameraStarted && !error && cameras.length === 0 && (
-            <div className="scanner-loading">
-              <p>Camera's worden geladen...</p>
-            </div>
-          )}
+          <div style={{ position: 'relative', width: '100%', maxWidth: '500px', margin: '0 auto' }}>
+            <video 
+              ref={videoRef}
+              style={{ width: '100%', height: 'auto', display: cameraStarted ? 'block' : 'none' }}
+              playsInline
+              muted
+            />
+            <canvas 
+              ref={canvasRef}
+              style={{ display: 'none' }}
+            />
+            {!cameraStarted && !error && (
+              <div className="scanner-loading">
+                <p>Camera wordt gestart...</p>
+              </div>
+            )}
+          </div>
           {error && (
             <div className="scanner-error">
               <p>{error}</p>
@@ -172,7 +159,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         </div>
         <div className="barcode-scanner-footer">
           <p className="scanner-hint">
-            {cameraStarted ? 'Houd de barcode in het vierkant' : 'Camera permissie vereist'}
+            {cameraStarted ? 'Houd de QR code voor de camera' : 'Camera permissie vereist'}
           </p>
         </div>
       </div>
