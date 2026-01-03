@@ -11,6 +11,7 @@ interface BarcodeScannerProps {
 export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps) {
   const scannerRef = useRef<Html5QrcodeScanner | null>(null)
   const [isScanning, setIsScanning] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isOpen) {
@@ -20,40 +21,60 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         scannerRef.current = null
       }
       setIsScanning(false)
+      setError(null)
       return
     }
 
     // Initialize scanner when modal opens
     if (!scannerRef.current) {
-      const scanner = new Html5QrcodeScanner(
-        'barcode-reader',
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 150 },
-          supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-          rememberLastUsedCamera: true,
-          showTorchButtonIfSupported: true
-        },
-        false
-      )
+      setError(null)
+      
+      try {
+        const scanner = new Html5QrcodeScanner(
+          'barcode-reader',
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 150 },
+            supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+            rememberLastUsedCamera: true,
+            showTorchButtonIfSupported: true,
+            formatsToSupport: [
+              0, // QR_CODE
+              8, // CODE_128
+              13, // CODE_39
+              5, // EAN_13
+              4, // EAN_8
+              11, // UPC_A
+              12  // UPC_E
+            ]
+          },
+          false
+        )
 
-      scanner.render(
-        (decodedText) => {
-          // Success callback
-          onScan(decodedText)
-          scanner.clear().catch(console.error)
-          scannerRef.current = null
-          setIsScanning(false)
-          onClose()
-        },
-        (errorMessage) => {
-          // Error callback - ignore continuous scanning errors
-          console.debug('Scan error:', errorMessage)
-        }
-      )
+        scanner.render(
+          (decodedText) => {
+            // Success callback
+            console.log('Barcode scanned:', decodedText)
+            onScan(decodedText)
+            scanner.clear().catch(console.error)
+            scannerRef.current = null
+            setIsScanning(false)
+            onClose()
+          },
+          (errorMessage) => {
+            // Error callback - ignore continuous scanning errors
+            if (!errorMessage.includes('NotFoundException')) {
+              console.debug('Scan error:', errorMessage)
+            }
+          }
+        )
 
-      scannerRef.current = scanner
-      setIsScanning(true)
+        scannerRef.current = scanner
+        setIsScanning(true)
+      } catch (err) {
+        console.error('Scanner initialization error:', err)
+        setError('Kan scanner niet starten. Controleer camera permissies.')
+      }
     }
 
     return () => {
@@ -75,9 +96,18 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         </div>
         <div className="barcode-scanner-content">
           <div id="barcode-reader"></div>
-          {!isScanning && (
+          {!isScanning && !error && (
             <div className="scanner-loading">
               <p>Camera wordt geïnitialiseerd...</p>
+            </div>
+          )}
+          {error && (
+            <div className="scanner-error">
+              <p>{error}</p>
+              <p style={{ fontSize: '0.85rem', marginTop: '0.5rem', color: '#aaa' }}>
+                Deze app vereist HTTPS voor camera toegang. 
+                Test op een mobiel apparaat via de gepubliceerde GitHub Pages URL.
+              </p>
             </div>
           )}
         </div>

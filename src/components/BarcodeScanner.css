@@ -110,6 +110,16 @@
   color: #aaa;
 }
 
+.scanner-error {
+  text-align: center;
+  padding: 2rem;
+  color: #ef4444;
+}
+
+.scanner-error p {
+  margin: 0;
+}
+
 .barcode-scanner-footer {
   padding: 1rem 1.5rem;
   border-top: 1px solid #444;
