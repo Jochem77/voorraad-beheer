@@ -387,6 +387,31 @@ body {
   word-break: break-word;
 }
 
+.detail-row.barcode-row {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  background: #252525;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+
+.barcode-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  background: #1a1a1a;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.barcode-container svg {
+  max-width: 100%;
+  height: auto;
+}
+
 @keyframes slideUp {
   from {
     opacity: 0;

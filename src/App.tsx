@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import Barcode from 'react-barcode'
 import './App.css'
 import { Header } from './components/Header'
 import { InventoryListView } from './components/InventoryListView'
@@ -716,6 +717,20 @@ function App() {
                             : '-'
                           }
                         </span>
+                      </div>
+
+                      <div className="detail-row barcode-row">
+                        <span className="label">SKU Barcode:</span>
+                        <div className="barcode-container">
+                          <Barcode 
+                            value={selectedItemModal.sku} 
+                            width={1.5}
+                            height={50}
+                            fontSize={12}
+                            background="#1a1a1a"
+                            lineColor="#ffffff"
+                          />
+                        </div>
                       </div>
 
                       <div className="detail-row notes-row">
