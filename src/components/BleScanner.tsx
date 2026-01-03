@@ -18,47 +18,49 @@ export function BleScanner() {
       setError('')
       setScanning(true)
 
-      // Probeer Joy-Con en andere controllers specifiek
-      const options = {
-        acceptAllDevices: false,
-        optionalServices: [
-          'generic_access',
-          '000000d1-0000-1000-8000-00805f9b34fb', // Joy-Con service
-          '0000181d-0000-1000-8000-00805f9b34fb'  // Motion service
-        ],
+      // Joy-Con UUID's en karakteristieken
+      const joyconServices = {
         filters: [
           { namePrefix: 'Joy-Con' },
+          { namePrefix: 'JC-' },
           { namePrefix: 'Pro Controller' },
-          { namePrefix: 'JC-' }
+          { services: ['0000180a-0000-1000-8000-00805f9b34fb'] } // Device Information
+        ],
+        optionalServices: [
+          'generic_access',
+          '0000180a-0000-1000-8000-00805f9b34fb', // Device Information
+          '0000180f-0000-1000-8000-00805f9b34fb', // Battery Service
+          '000000d1-0000-1000-8000-00805f9b34fb'  // Joy-Con service
         ]
       } as any
 
+      // Probeer apparaten te vinden
+      let foundDevices: any[] = []
+      
       try {
-        // Probeer eerst specifiek Joy-Con
-        const device = await (navigator as any).bluetooth.requestDevice(options)
+        // Probeer het device picker dialoog
+        const device = await (navigator as any).bluetooth.requestDevice(joyconServices)
         if (device) {
-          addDevice(device)
-          return
+          foundDevices.push(device)
         }
-      } catch {
-        // Als specifiek niet werkt, probeer algemeen
-        setError('Joy-Con niet gevonden, probeer alle apparaten...')
+      } catch (err: any) {
+        if (err.name === 'NotFoundError') {
+          setError('❌ Joy-Con niet gevonden. Zorg dat deze in pairing mode staat en dicht bij de computer is.')
+        } else if (err.name === 'SecurityError') {
+          setError('⚠️ Bluetooth is mogelijk niet ingeschakeld of toegang geweigerd.')
+        } else {
+          throw err
+        }
       }
 
-      // Fallback: scan alle apparaten
-      const allOptions = {
-        acceptAllDevices: true,
-        optionalServices: ['generic_access']
-      } as any
+      // Voeg gevonden apparaten toe
+      foundDevices.forEach(device => addDevice(device))
 
-      const device = await (navigator as any).bluetooth.requestDevice(allOptions)
-      if (device) {
-        addDevice(device)
+      if (foundDevices.length === 0) {
+        setError('Geen Joy-Con gevonden. Probeer "Alle Apparaten" zoeken.')
       }
     } catch (err: any) {
-      if (err.name !== 'NotFoundError') {
-        setError(`Fout: ${err.message || 'Kon apparaten niet scannen'}`)
-      }
+      setError(`Fout: ${err.message || 'Kon Joy-Con niet scannen'}`)
     } finally {
       setScanning(false)
     }
@@ -86,29 +88,36 @@ export function BleScanner() {
       setScanning(true)
       setDevices([])
 
-      // Probeer meerdere keren te scannen
-      for (let i = 0; i < 3; i++) {
-        try {
-          const device = await (navigator as any).bluetooth.requestDevice({
-            acceptAllDevices: true,
-            optionalServices: ['generic_access']
-          })
-          if (device) {
-            addDevice(device)
-          }
-        } catch (err: any) {
-          if (err.name === 'NotFoundError') {
-            continue
-          }
-          throw err
-        }
+      const options = {
+        acceptAllDevices: true,
+        optionalServices: [
+          'generic_access',
+          '0000180a-0000-1000-8000-00805f9b34fb',
+          '0000180f-0000-1000-8000-00805f9b34fb',
+          '000000d1-0000-1000-8000-00805f9b34fb'
+        ]
+      } as any
+
+      // Probeer apparaat selecteren
+      const device = await (navigator as any).bluetooth.requestDevice(options)
+      if (device) {
+        addDevice(device)
+      } else {
+        setError('Geen apparaat geselecteerd.')
       }
     } catch (err: any) {
-      setError(`Fout: ${err.message || 'Kon apparaten niet scannen'}`)
+      if (err.name === 'NotFoundError') {
+        setError('❌ Geen Bluetooth apparaten gevonden.')
+      } else if (err.name === 'SecurityError') {
+        setError('⚠️ Bluetooth toegang geweigerd. Zorg dat je browser Bluetooth mag gebruiken.')
+      } else if (err.name === 'NotSupportedError') {
+        setError('⚠️ Je browser of systeem ondersteunt Bluetooth Web API niet.')
+      } else {
+        setError(`Fout: ${err.message}`)
+      }
     } finally {
       setScanning(false)
     }
-  }
 
   const connectDevice = async (device: BluetoothDevice) => {
     try {
@@ -180,6 +189,17 @@ export function BleScanner() {
       </div>
 
       {error && <div className="error-message">{error}</div>}
+
+      <div className="scanner-info">
+        <p>💡 <strong>Tips:</strong></p>
+        <ul>
+          <li>Zorg dat je Joy-Con in <strong>pairing mode</strong> staat (houd de kleine knopje ingedrukt)</li>
+          <li>Plaats de Joy-Con dicht bij je computer (max 5 meter)</li>
+          <li>Sluit andere Bluetooth apparaten af om interferentie te voorkomen</li>
+          <li>Probeer eerst <strong>"🎮 Joy-Con Zoeken"</strong></li>
+          <li>Als dat niet werkt, probeer <strong>"📱 Alle Apparaten"</strong></li>
+        </ul>
+      </div>
 
       {devices.length === 0 && !scanning && (
         <div className="no-devices">
