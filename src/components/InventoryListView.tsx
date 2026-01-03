@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { InventoryItem, Condition, Status } from '../types'
 import { PRODUCT_LABELS, CONDITION_LABELS, STATUS_LABELS } from '../types'
+import { BarcodeScanner } from './BarcodeScanner'
 import './InventoryListView.css'
 
 interface InventoryListViewProps {
@@ -33,6 +34,7 @@ const conditionColors: Record<Condition, string> = {
 export function InventoryListView({ items, onDelete, onUpdate, onEditCard, totalItems, onFilterClick, onAddClick, onSettingsClick, skuSearch, onSkuSearchChange }: InventoryListViewProps) {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editKleur, setEditKleur] = useState('')
+  const [showScanner, setShowScanner] = useState(false)
   const [editSerienummer, setEditSerienummer] = useState('')
 
   const saveEdit = (id: number) => {
@@ -104,12 +106,26 @@ export function InventoryListView({ items, onDelete, onUpdate, onEditCard, total
       </div>
       {onSkuSearchChange && (
         <div className="sku-search-bar">
-          <input
-            type="text"
-            value={skuSearch || ''}
-            onChange={(e) => onSkuSearchChange(e.target.value)}
-            placeholder="🔍 Zoek op SKU..."
-            className="sku-search-input"
+          <div className="sku-search-wrapper">
+            <input
+              type="text"
+              value={skuSearch || ''}
+              onChange={(e) => onSkuSearchChange(e.target.value)}
+              placeholder="🔍 Zoek op SKU..."
+              className="sku-search-input"
+            />
+            <button 
+              className="btn-scan-barcode"
+              onClick={() => setShowScanner(true)}
+              title="Scan barcode"
+            >
+              📷
+            </button>
+          </div>
+          <BarcodeScanner 
+            isOpen={showScanner}
+            onClose={() => setShowScanner(false)}
+            onScan={(code) => onSkuSearchChange(code)}
           />
         </div>
       )}
@@ -134,16 +150,15 @@ export function InventoryListView({ items, onDelete, onUpdate, onEditCard, total
                 className="table-row"
                 onDoubleClick={() => onEditCard(item)}
               >
-                <td className="sku-cell">
+                <td className="sku-cell" data-label="SKU">
                   <code>{item.sku}</code>
                 </td>
-                <td className="type-cell">
+                <td className="type-cell" data-label="Type">
                   <div className="type-with-color">
                     {PRODUCT_LABELS[item.type]}
                   </div>
                 </td>
-                <td>
-                  {editingId === item.id ? (
+                <td data-label="Kleur">{editingId === item.id ? (
                     <input
                       type="text"
                       value={editKleur}
@@ -168,7 +183,7 @@ export function InventoryListView({ items, onDelete, onUpdate, onEditCard, total
                     </div>
                   )}
                 </td>
-                <td>
+                <td data-label="Serienummer">
                   {editingId === item.id ? (
                     <input
                       type="text"
@@ -180,7 +195,7 @@ export function InventoryListView({ items, onDelete, onUpdate, onEditCard, total
                     <code>{item.serienummer}</code>
                   )}
                 </td>
-                <td>
+                <td data-label="Staat">
                   {editingId === item.id ? (
                     <select
                       value={item.staat}
@@ -205,7 +220,7 @@ export function InventoryListView({ items, onDelete, onUpdate, onEditCard, total
                     </span>
                   )}
                 </td>
-                <td>
+                <td data-label="Status">
                   {editingId === item.id ? (
                     <select
                       value={item.status}
@@ -230,7 +245,7 @@ export function InventoryListView({ items, onDelete, onUpdate, onEditCard, total
                     </span>
                   )}
                 </td>
-                <td className="date-cell">
+                <td className="date-cell" data-label="Toegevoegd">
                   {item.created_at 
                     ? new Date(item.created_at).toLocaleDateString('nl-NL')
                     : item.date_added 

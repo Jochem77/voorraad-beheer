@@ -1,0 +1,140 @@
+.barcode-scanner-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.barcode-scanner-modal {
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.barcode-scanner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #444;
+}
+
+.barcode-scanner-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #667eea;
+}
+
+.btn-close-scanner {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-close-scanner:hover {
+  background: #333;
+  color: #fff;
+}
+
+.barcode-scanner-content {
+  flex: 1;
+  overflow: auto;
+  padding: 1.5rem;
+  position: relative;
+}
+
+#barcode-reader {
+  width: 100%;
+}
+
+/* Override html5-qrcode styles */
+#barcode-reader video {
+  border-radius: 8px;
+}
+
+#barcode-reader__dashboard_section {
+  display: none !important;
+}
+
+#barcode-reader__camera_selection {
+  background: #252525 !important;
+  border: 1px solid #444 !important;
+  color: #fff !important;
+  padding: 0.5rem !important;
+  border-radius: 6px !important;
+  margin-bottom: 1rem !important;
+}
+
+#barcode-reader__camera_permission_button {
+  background: #667eea !important;
+  color: white !important;
+  border: none !important;
+  padding: 0.75rem 1.5rem !important;
+  border-radius: 6px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+}
+
+#barcode-reader__scan_region {
+  border: 2px solid #667eea !important;
+  border-radius: 8px !important;
+}
+
+.scanner-loading {
+  text-align: center;
+  padding: 2rem;
+  color: #aaa;
+}
+
+.barcode-scanner-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #444;
+  text-align: center;
+}
+
+.scanner-hint {
+  margin: 0;
+  color: #aaa;
+  font-size: 0.9rem;
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+  .barcode-scanner-modal {
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .barcode-scanner-header {
+    padding: 1rem;
+  }
+
+  .barcode-scanner-content {
+    padding: 1rem;
+  }
+}
