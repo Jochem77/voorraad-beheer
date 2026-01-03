@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import Barcode from 'react-barcode'
+import { QRCodeSVG } from 'qrcode.react'
 import './App.css'
 import { Header } from './components/Header'
 import { InventoryListView } from './components/InventoryListView'
@@ -720,15 +720,14 @@ function App() {
                       </div>
 
                       <div className="detail-row barcode-row">
-                        <span className="label">SKU Barcode:</span>
+                        <span className="label">SKU QR Code:</span>
                         <div className="barcode-container">
-                          <Barcode 
+                          <QRCodeSVG 
                             value={selectedItemModal.sku} 
-                            width={1.5}
-                            height={50}
-                            fontSize={12}
-                            background="#1a1a1a"
-                            lineColor="#ffffff"
+                            size={128}
+                            bgColor="#1a1a1a"
+                            fgColor="#ffffff"
+                            level="M"
                           />
                         </div>
                       </div>
