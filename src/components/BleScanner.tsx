@@ -23,18 +23,32 @@ export function BleScanner() {
       console.log('📱 Laden van al gekoppelde apparaten...')
       if (!(navigator as any).bluetooth) {
         console.log('❌ Bluetooth Web API niet beschikbaar')
+        setError('⚠️ Bluetooth Web API niet beschikbaar')
         return
       }
 
       // Haal alle eerder verbonden apparaten op
+      console.log('getDevices beschikbaar?', typeof (navigator as any).bluetooth.getDevices)
       const devices = await (navigator as any).bluetooth.getDevices()
-      console.log(`✅ ${devices.length} eerder verbonden apparaten gevonden:`)
+      console.log(`✅ ${devices.length} eerder verbonden apparaten gevonden`)
+      
+      if (devices.length === 0) {
+        console.log('⚠️ Geen apparaten gevonden. Dit kan betekenen:')
+        console.log('  1. Joy-Con is niet in pairing mode')
+        console.log('  2. Joy-Con is niet gekoppeld via deze browser')
+        console.log('  3. Browser ondersteunt getDevices() niet')
+        setError('❌ Geen gekoppelde apparaten gevonden. Probeer "🎮 Joy-Con Zoeken" in plaats daarvan.')
+      } else {
+        setError('')
+      }
+      
       devices.forEach((device: any) => {
-        console.log(`  - ${device.name} (${device.id})`)
+        console.log(`  - Naam: "${device.name}", ID: ${device.id}, GATT connected: ${device.gatt?.connected}`)
         addDevice(device)
       })
     } catch (err: any) {
-      console.error('Fout bij laden gekoppelde apparaten:', err)
+      console.error('❌ Fout bij laden gekoppelde apparaten:', err.message, err.name)
+      setError(`Fout: ${err.message}`)
     }
   }
 
