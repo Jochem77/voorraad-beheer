@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Html5QrcodeScanner, Html5QrcodeScanType } from 'html5-qrcode'
+import { Html5Qrcode, Html5QrcodeScannerState } from 'html5-qrcode'
 import './BarcodeScanner.css'
 
 interface BarcodeScannerProps {
@@ -9,122 +9,87 @@ interface BarcodeScannerProps {
 }
 
 export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps) {
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null)
+  const scannerRef = useRef<Html5Qrcode | null>(null)
   const [isScanning, setIsScanning] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [needsPermission, setNeedsPermission] = useState(false)
+  const [cameraStarted, setCameraStarted] = useState(false)
 
-  const requestCameraPermission = async () => {
+  const startScanning = async () => {
     try {
       setError(null)
-      setNeedsPermission(false)
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      // Stop the stream immediately, we just needed permission
-      stream.getTracks().forEach(track => track.stop())
-      console.log('Camera permission granted')
-      // Trigger scanner initialization
-      window.location.reload()
-    } catch (err) {
-      console.error('Camera permission denied:', err)
-      setError('Camera toegang geweigerd. Sta camera toegang toe in je browser instellingen.')
+      
+      if (!scannerRef.current) {
+        scannerRef.current = new Html5Qrcode('barcode-reader')
+      }
+
+      const scanner = scannerRef.current
+      
+      console.log('Starting camera...')
+      
+      // Start the camera with back camera preference
+      await scanner.start(
+        { facingMode: 'environment' }, // Use back camera on mobile
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 150 },
+          aspectRatio: 1.777778
+        },
+        (decodedText) => {
+          // Success callback
+          console.log('Barcode scanned:', decodedText)
+          onScan(decodedText)
+          stopScanning()
+          onClose()
+        },
+        (errorMessage) => {
+          // Error callback - ignore continuous scanning errors
+          if (!errorMessage.includes('NotFoundException') && !errorMessage.includes('No MultiFormat Readers')) {
+            console.debug('Scan error:', errorMessage)
+          }
+        }
+      )
+      
+      setCameraStarted(true)
+      setIsScanning(true)
+      console.log('Camera started successfully')
+      
+    } catch (err: any) {
+      console.error('Failed to start camera:', err)
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setError('Camera toegang geweigerd. Sta camera toegang toe in je browser instellingen.')
+      } else if (err.name === 'NotFoundError') {
+        setError('Geen camera gevonden op dit apparaat.')
+      } else {
+        setError('Kan camera niet starten: ' + (err.message || 'Onbekende fout'))
+      }
     }
+  }
+
+  const stopScanning = async () => {
+    try {
+      if (scannerRef.current && scannerRef.current.getState() === Html5QrcodeScannerState.SCANNING) {
+        await scannerRef.current.stop()
+        console.log('Camera stopped')
+      }
+    } catch (err) {
+      console.error('Error stopping scanner:', err)
+    }
+    setCameraStarted(false)
+    setIsScanning(false)
   }
 
   useEffect(() => {
     if (!isOpen) {
       // Cleanup scanner when modal closes
+      stopScanning()
       if (scannerRef.current) {
         scannerRef.current.clear().catch(console.error)
         scannerRef.current = null
       }
-      setIsScanning(false)
       setError(null)
-      setNeedsPermission(false)
       return
     }
-
-    // Check camera permission first
-    const checkAndInitScanner = async () => {
-      try {
-        // Check if we have camera permissions
-        if (navigator.mediaDevices) {
-          // Try to get permission
-          console.log('Checking camera permissions...')
-          
-          const scanner = new Html5QrcodeScanner(
-            'barcode-reader',
-            {
-              fps: 10,
-              qrbox: { width: 250, height: 150 },
-              supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-              rememberLastUsedCamera: true,
-              showTorchButtonIfSupported: true,
-              formatsToSupport: [
-                0, // QR_CODE
-                8, // CODE_128
-                13, // CODE_39
-                5, // EAN_13
-                4, // EAN_8
-                11, // UPC_A
-                12  // UPC_E
-              ],
-              aspectRatio: 1.777778,
-              disableFlip: false
-            },
-            true // verbose logging
-          )
-
-          scanner.render(
-            (decodedText) => {
-              // Success callback
-              console.log('Barcode scanned:', decodedText)
-              onScan(decodedText)
-              scanner.clear().catch(console.error)
-              scannerRef.current = null
-              setIsScanning(false)
-              onClose()
-            },
-            (errorMessage) => {
-              // Error callback - ignore continuous scanning errors
-              if (!errorMessage.includes('NotFoundException') && !errorMessage.includes('No MultiFormat Readers')) {
-                console.log('Scan error:', errorMessage)
-                if (errorMessage.includes('Permission') || errorMessage.includes('NotAllowedError')) {
-                  setNeedsPermission(true)
-                  setError('Camera toegang vereist. Klik hieronder om toegang te geven.')
-                }
-              }
-            }
-          )
-
-          scannerRef.current = scanner
-          setIsScanning(true)
-        } else {
-          setError('Je browser ondersteunt geen camera toegang.')
-        }
-      } catch (err: any) {
-        console.error('Scanner initialization error:', err)
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          setNeedsPermission(true)
-          setError('Camera toegang vereist. Klik hieronder om toegang te geven.')
-        } else {
-          setError('Kan scanner niet starten: ' + (err.message || 'Onbekende fout'))
-        }
-      }
-    }
-
-    if (!scannerRef.current) {
-      setError(null)
-      setNeedsPermission(false)
-      checkAndInitScanner()
-    }
-
-    return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear().catch(console.error)
-        scannerRef.current = null
-      }
-    }
-  }, [isOpen, onScan, onClose])
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -137,35 +102,34 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         </div>
         <div className="barcode-scanner-content">
           <div id="barcode-reader"></div>
-          {!isScanning && !error && (
+          {!cameraStarted && !error && (
             <div className="scanner-loading">
-              <p>Camera wordt geïnitialiseerd...</p>
-              <p style={{ fontSize: '0.85rem', marginTop: '0.5rem', color: '#aaa' }}>
-                De browser zal om camera toegang vragen
-              </p>
+              <p>Klik op de knop om de camera te starten</p>
+              <button 
+                onClick={startScanning}
+                className="btn-start-camera"
+                disabled={isScanning}
+              >
+                📷 Start Camera
+              </button>
             </div>
           )}
           {error && (
             <div className="scanner-error">
               <p>{error}</p>
-              {needsPermission && (
-                <button 
-                  onClick={requestCameraPermission}
-                  className="btn-grant-permission"
-                >
-                  📷 Camera Toegang Toestaan
-                </button>
-              )}
-              <p style={{ fontSize: '0.85rem', marginTop: '0.5rem', color: '#aaa' }}>
-                {window.location.protocol === 'https:' 
-                  ? 'Zorg ervoor dat je camera toegang hebt toegestaan in de browser.'
-                  : 'Deze app vereist HTTPS voor camera toegang. Test op de gepubliceerde GitHub Pages URL.'}
-              </p>
+              <button 
+                onClick={startScanning}
+                className="btn-start-camera"
+              >
+                🔄 Probeer Opnieuw
+              </button>
             </div>
           )}
         </div>
         <div className="barcode-scanner-footer">
-          <p className="scanner-hint">Houd de barcode in het vierkant</p>
+          <p className="scanner-hint">
+            {cameraStarted ? 'Houd de barcode in het vierkant' : 'Camera permissie vereist'}
+          </p>
         </div>
       </div>
     </div>
