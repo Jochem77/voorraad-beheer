@@ -26,7 +26,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           setSelectedCamera(devices[0].id)
           // Automatically start scanning with camera 0
           setTimeout(() => {
-            startScanning()
+            startScanning(devices[0].id)
           }, 100)
         } else {
           setError('Geen camera\'s gevonden op dit apparaat')
@@ -38,7 +38,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     }
   }, [isOpen])
 
-  const startScanning = async () => {
+  const startScanning = async (cameraIdParam?: string) => {
     try {
       setError(null)
       
@@ -47,7 +47,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       }
 
       const scanner = scannerRef.current
-      const cameraId = selectedCamera || cameras[0]?.id
+      const cameraId = cameraIdParam || selectedCamera || cameras[0]?.id
       
       if (!cameraId) {
         setError('Geen camera geselecteerd')
