@@ -65,8 +65,8 @@ export function BleScanner() {
         
         setDevices(prev => {
           const updated = [...prev, newDevice]
-          // Auto-connect immediately after adding
-          setTimeout(() => connectDevice(newDevice), 100)
+          // Auto-connect after device is ready
+          setTimeout(() => connectDevice(newDevice), 500)
           return updated
         })
       }
@@ -90,7 +90,17 @@ export function BleScanner() {
       if (device.id.startsWith('hid-')) {
         const hidDevice = device.rawDevice as any
         if (!hidDevice.opened) {
-          await hidDevice.open()
+          try {
+            await hidDevice.open()
+          } catch (openErr: any) {
+            // If device is busy, retry after a short delay
+            if (openErr.message.includes('operation') || openErr.message.includes('in progress')) {
+              await new Promise(r => setTimeout(r, 300))
+              await hidDevice.open()
+            } else {
+              throw openErr
+            }
+          }
         }
         setDevices(prev => prev.map(d => 
           d.id === device.id ? { ...d, connected: true } : d
