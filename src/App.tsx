@@ -48,6 +48,7 @@ function App() {
     skuSearch: '',
     serienummerSearch: ''
   })
+  const [prefillData, setPrefillData] = useState<{ serialNumber?: string, color?: string } | null>(null)
 
   // Check authentication on mount
   useEffect(() => {
@@ -198,25 +199,40 @@ function App() {
       const newAction = {
         item_id: itemId,
         action,
-        other_action: otherAction || null,
+        other_action: otherAction,
         date_added: new Date().toISOString()
       }
 
       const { data, error } = await supabase
         .from('actions')
         .insert([newAction])
-        .select()
+        .select('*')
 
-      if (error) {
-        console.error('Supabase error details:', error)
-        throw error
-      }
-      if (data && data.length > 0) {
+      if (error) throw error
+      if (data) {
         setActions([data[0], ...actions])
       }
     } catch (error) {
       console.error('Error adding action:', error)
-      alert('Fout bij toevoegen van actie. Check de browser console voor details.')
+      alert('Fout bij toevoegen van actie')
+    }
+  }
+
+  const handleJoyConDetected = (serialNumber: string, color: string) => {
+    // Check if this serial number already exists
+    const existingItem = items.find(item => item.serienummer === serialNumber)
+    
+    if (existingItem) {
+      // Open the details of the existing item
+      setSelectedItemModal(existingItem)
+      setSelectedItemTab('info')
+      setCurrentPage('inventory')
+    } else {
+      // Open add form with prefilled data
+      setPrefillData({ serialNumber, color })
+      setShowAddModal(true)
+      setAddItemType('switch_joycon_left') // Default to left, user can change
+      setCurrentPage('inventory')
     }
   }
 
@@ -485,9 +501,13 @@ function App() {
               <div className="add-item-form-wrapper">
                 <AddItemForm 
                   onAdd={addItem}
-                  onClose={() => setShowAddModal(false)}
+                  onClose={() => {
+                    setShowAddModal(false)
+                    setPrefillData(null)
+                  }}
                   nextNumber={items.length + 1}
                   initialType={addItemType}
+                  prefillData={prefillData}
                 />
               </div>
             </div>
@@ -1040,7 +1060,7 @@ function App() {
         />
           </>
         ) : (
-          <BleScanner />
+          <BleScanner onJoyConDetected={handleJoyConDetected} />
         )}
       </main>
     </div>

@@ -15,16 +15,49 @@ interface BluetoothDevice {
   rightGripColor?: string
 }
 
-export function BleScanner() {
+interface BleScannerProps {
+  onJoyConDetected?: (serialNumber: string, color: string) => void
+}
+
+export function BleScanner({ onJoyConDetected }: BleScannerProps) {
   const [devices, setDevices] = useState<BluetoothDevice[]>([])
   const [scanning, setScanning] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    // No initialization needed
+    // Auto-load already connected Joy-Cons on app start
+    const loadPairedDevices = async () => {
+      if (!(navigator as any).hid) return
+      
+      try {
+        const devices = await (navigator as any).hid.getDevices()
+        const NINTENDO_VID = 0x057E
+        const joyconDevices = devices.filter((d: any) => d.vendorId === NINTENDO_VID)
+        
+        if (joyconDevices.length > 0) {
+          const formattedDevices = joyconDevices.map((d: any) => ({
+            id: `hid-${d.vendorId}-${d.productId}-${d.serialNumber || Math.random()}`,
+            name: d.productName || 'Unknown Joy-Con',
+            rssi: 0,
+            connected: false,
+            rawDevice: d
+          }))
+          setDevices(formattedDevices)
+          
+          // Auto-connect to first one
+          if (formattedDevices.length > 0) {
+            setTimeout(() => connectDevice(formattedDevices[0]), 500)
+          }
+        }
+      } catch (err) {
+        console.log('No paired Joy-Cons found')
+      }
+    }
+    
+    loadPairedDevices()
   }, [])
 
-  const startWebHIDScan = async () => {
+  const scanForJoyCons = async () => {
     try {
       setError('')
       setScanning(true)
@@ -42,6 +75,7 @@ export function BleScanner() {
       const JOYCON_R_PID = 0x2007
       const PRO_CONTROLLER_PID = 0x2009
 
+      console.log('Requesting WebHID Joy-Con device...')
       const devices = await (navigator as any).hid.requestDevice({
         filters: [
           { vendorId: NINTENDO_VID, productId: JOYCON_L_PID },
@@ -50,13 +84,13 @@ export function BleScanner() {
         ]
       })
 
-      if (devices.length === 0) {
-        setError('❌ Geen Joy-Con gevonden')
+      if (!devices || devices.length === 0) {
+        setError('❌ Geen Joy-Con geselecteerd')
         setScanning(false)
         return
       }
 
-      // Process and auto-connect to all selected devices
+      // Process selected devices
       for (const device of devices) {
         const newDevice: BluetoothDevice = {
           id: `hid-${device.vendorId}-${device.productId}-${Math.random()}`,
@@ -76,10 +110,10 @@ export function BleScanner() {
       }
     } catch (err: any) {
       console.error('❌ WebHID error:', err)
-      if (err.message.includes('user gesture')) {
-        setError('⚠️ WebHID moet direct van een knop klik worden aangeroepen')
+      if (err.name === 'NotFoundError' || err.message.includes('cancelled')) {
+        setError('❌ Selectie geannuleerd')
       } else {
-        setError('❌ Joy-Con kon niet worden gevonden')
+        setError(`❌ ${err.message || 'Joy-Con kon niet worden gevonden'}`)
       }
     } finally {
       setScanning(false)
@@ -121,21 +155,14 @@ export function BleScanner() {
             }
           }
         }
+        
         setDevices(prev => prev.map(d => 
           d.id === device.id ? { ...d, connected: true } : d
         ))
         
-        // Start reading from device
-        readWebHIDData(hidDevice, device)
-      } else {
-        // Bluetooth Web API device
-        const bleDevice = await (navigator as any).bluetooth.getDevice(device.id)
-        if (!bleDevice.gatt.connected) {
-          await bleDevice.gatt.connect()
-        }
-        setDevices(prev => prev.map(d => 
-          d.id === device.id ? { ...d, connected: true } : d
-        ))
+        // Read the data after connecting
+        setTimeout(() => readWebHIDData(hidDevice, device), 100)
+        return
       }
     } catch (err: any) {
       setError(`Verbindingsfout: ${err.message}`)
@@ -165,9 +192,9 @@ export function BleScanner() {
                 hidDevice.removeEventListener('inputreport', inputHandler)
                 
                 let serialNumber = ''
-                // Serial number starts at offset 0x14
+                // Serial number starts at offset 0x13 (not 0x14!)
                 for (let i = 0; i < 16; i++) {
-                  const byte = data.getUint8(0x14 + i)
+                  const byte = data.getUint8(0x13 + i)
                   if (byte >= 32 && byte <= 126) {
                     serialNumber += String.fromCharCode(byte)
                   } else if (byte === 0) {
@@ -424,26 +451,52 @@ export function BleScanner() {
   return (
     <div className="ble-scanner">
       <div className="scanner-header">
-        <h2>🎮 Joy-Con Verbinden</h2>
-        <div className="scanner-buttons">
+        <h2>🎮 Joy-Con Pairing</h2>
+        <div className="scanner-buttons" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button 
             className="btn-scan" 
-            onClick={startWebHIDScan}
+            onClick={scanForJoyCons}
             disabled={scanning}
-            title="Zoek Joy-Con via WebHID"
-            style={{ backgroundColor: '#10b981' }}
+            title="Scan voor Joy-Cons via WebHID (Windows pairing vereist)"
+            style={{ backgroundColor: '#06b6d4', flex: 1 }}
           >
-            {scanning ? 'Scannen...' : '🎮 Joy-Con Zoeken'}
+            {scanning ? 'Scannen...' : '🎮 Scan Joy-Con'}
           </button>
         </div>
       </div>
 
       {error && <div className="error-message">{error}</div>}
 
+      {/* Pairing Instructions */}
+      {!scanning && devices.length === 0 && (
+        <div style={{ 
+          backgroundColor: '#f0f9ff', 
+          border: '2px solid #10b981', 
+          borderRadius: '8px', 
+          padding: '1rem',
+          margin: '1rem 0',
+          lineHeight: '1.6',
+          color: '#1f2937'
+        }}>
+          <h3 style={{ marginTop: 0, color: '#10b981' }}>🎮 Joy-Con Verbinden (WebHID):</h3>
+          <p style={{ margin: '0.5rem 0' }}>Om Joy-Con te gebruiken, moet deze eerst gekoppeld zijn met Windows Bluetooth:</p>
+          <ol style={{ marginBottom: 0, color: '#1f2937' }}>
+            <li><strong>Windows Instellingen</strong> → Bluetooth → "Apparaat toevoegen" → "Bluetooth"</li>
+            <li><strong>Joy-Con in pairing mode:</strong>
+              <ul style={{ marginTop: '0.25rem' }}>
+                <li>Joy-Con L/R: Beide SL + SR knoppen ingedrukt (tot LEDs knipperen)</li>
+                <li>Pro Controller: Pairing button achterop ingedrukt houden</li>
+              </ul>
+            </li>
+            <li>Selecteer je Joy-Con in het Windows dialoog en koppel</li>
+            <li>Klik op <strong>"🎮 Scan Joy-Con"</strong> om de gekoppelde Joy-Con te selecteren</li>
+          </ol>
+        </div>
+      )}
 
       {devices.length === 0 && !scanning && (
         <div className="no-devices">
-          Klik op "🎮 Joy-Con Zoeken" om je Joy-Con te selecteren.
+          Volg de stappen hierboven en klik op "🎮 Joy-Con Koppelen".
         </div>
       )}
 
@@ -469,6 +522,26 @@ export function BleScanner() {
                   <div className="device-services" style={{ fontSize: '0.85em', color: '#888', marginTop: '0.5rem' }}>
                     Services: {device.services.join(', ')}
                   </div>
+                )}
+                
+                {/* Add to Inventory Button */}
+                {device.connected && device.serialNumber && device.bodyColor && (
+                  <button
+                    onClick={() => onJoyConDetected?.(device.serialNumber!, device.bodyColor!)}
+                    style={{
+                      marginTop: '0.75rem',
+                      padding: '0.5rem 1rem',
+                      backgroundColor: '#10b981',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '0.9em'
+                    }}
+                  >
+                    ➕ Toevoegen aan Voorraad
+                  </button>
                 )}
                 
                 {/* Color Display */}

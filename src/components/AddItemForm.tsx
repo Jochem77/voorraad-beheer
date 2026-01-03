@@ -9,9 +9,10 @@ interface AddItemFormProps {
   nextNumber?: number
   initialType?: ProductType
   onTypeChange?: (type: ProductType) => void
+  prefillData?: { serialNumber?: string, color?: string } | null
 }
 
-export function AddItemForm({ onAdd, onClose, nextNumber = 1, initialType = 'switch_joycon_left' }: AddItemFormProps) {
+export function AddItemForm({ onAdd, onClose, nextNumber = 1, initialType = 'switch_joycon_left', prefillData }: AddItemFormProps) {
   const [currentTab, setCurrentTab] = useState<'info' | 'aankoop' | 'verkoop' | 'acties' | 'fotos'>('info')
   const [type, setType] = useState<ProductType>(initialType)
   const [kleur, setKleur] = useState('Black')
@@ -47,6 +48,28 @@ export function AddItemForm({ onAdd, onClose, nextNumber = 1, initialType = 'swi
       setKleurHex(XBOX_COLORS['White'])
     }
   }, [initialType])
+
+  // Prefill data when provided (from Joy-Con scanner)
+  useEffect(() => {
+    if (prefillData) {
+      if (prefillData.serialNumber) {
+        setSerienummer(prefillData.serialNumber)
+      }
+      if (prefillData.color) {
+        // Try to match the hex color to a known color name
+        const colorEntry = Object.entries(JOYCON_COLORS).find(([_, hex]) => 
+          hex.toLowerCase() === prefillData.color?.toLowerCase()
+        )
+        if (colorEntry) {
+          setKleur(colorEntry[0])
+          setKleurHex(colorEntry[1])
+        } else {
+          // Use the hex directly if no match found
+          setKleurHex(prefillData.color)
+        }
+      }
+    }
+  }, [prefillData])
 
   const isJoycon = type === 'switch_joycon_left' || type === 'switch_joycon_right'
   const isDualsense = type === 'ps5_dualsense'

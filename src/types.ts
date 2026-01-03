@@ -188,7 +188,10 @@ export const XBOX_ACTIONS: Record<XboxAction, string> = {
 }
 
 export const JOYCON_COLORS: Record<string, string> = {
+  // Developer Kit
   'Black': '#313131',
+  
+  // Standard Retail
   'Gray': '#828282',
   'Neon Red': '#FF3C28',
   'Neon Blue': '#0AB9E6',
@@ -200,6 +203,12 @@ export const JOYCON_COLORS: Record<string, string> = {
   'Neon Purple': '#B400E6',
   'Neon Orange': '#FAA005',
   'White': '#E6E6E6',
+  'Pastel Pink': '#FFAFAF',
+  'Pastel Yellow': '#F5FF82',
+  'Pastel Purple': '#F0CBEB',
+  'Pastel Green': '#BCFFC8',
+  
+  // Special Editions
   'Pokemon Eevee Brown': '#C88C32',
   'Pokemon Pikachu Yellow': '#FFDC00',
   'Nintendo Labo Cardboard': '#D7AA73',
@@ -211,9 +220,14 @@ export const JOYCON_COLORS: Record<string, string> = {
   'Fortnite Wildcat Yellow': '#FFCC00',
   'Fortnite Dark Blue': '#0084FF',
   'Mario Red': '#F04614',
-  'Monster Hunter Gray': '#828282',
+  'Monster Hunter Gray': '#818282',
   'Zelda Skyward Sword Dark Blue': '#2D50F0',
-  'Zelda Skyward Sword Dark Purple': '#500FC8'
+  'Zelda Skyward Sword Dark Purple': '#500FC8',
+  'Splatoon 3 Blue Gradient': '#6455F5',
+  'Splatoon 3 Yellow Gradient': '#C3FA05',
+  'Pokemon Scarlet': '#F07341',
+  'Pokemon Violet': '#9650AA',
+  'Zelda TOTK Gold': '#D2BE69'
 }
 
 export const DUALSENSE_COLORS: Record<string, string> = {
