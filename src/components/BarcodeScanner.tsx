@@ -62,10 +62,10 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
 
       console.log('Starting camera with ID:', cameraId)
       
-      // Configure scanner for QR code only
+      // Configure scanner for QR code with better settings for laptop webcams
       const config: any = {
-        fps: 5,
-        qrbox: { width: 280, height: 200 },
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
         aspectRatio: 1.777778,
         disableFlip: false,
         formatsToSupport: [
@@ -73,6 +73,11 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         ],
         experimentalFeatures: {
           useBarCodeDetectorIfSupported: true
+        },
+        videoConstraints: {
+          facingMode: "environment",
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
         }
       }
       
