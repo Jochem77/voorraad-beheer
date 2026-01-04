@@ -12,7 +12,7 @@ interface AddRepairFormProps {
     serialNumber?: string
     color?: string
     controllerType?: string
-  }
+  } | null
   existingRepair?: RepairItem
 }
 
