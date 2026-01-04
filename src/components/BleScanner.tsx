@@ -426,60 +426,58 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
 
   const getDualSenseSerialNumber = async (hidDevice: any): Promise<string | null> => {
     try {
-      console.log('🎮 Reading DualSense serial number...')
+      console.log('🎮 Reading DualSense serial number using getSystemInfo method...')
       
-      // Try multiple feature report IDs
-      const reportIds = [0x09, 0x20, 0x05]
+      // Based on dualshock-tools: getSystemInfo(1, 19, 17)
+      // This sends feature report 0x80 with [1, 19] and reads response from 0x81
       
-      for (const reportId of reportIds) {
-        try {
-          console.log(`Trying feature report 0x${reportId.toString(16).padStart(2, '0')}...`)
-          const reportData = await hidDevice.receiveFeatureReport(reportId)
-          
-          console.log(`Received ${reportData.byteLength} bytes from report 0x${reportId.toString(16).padStart(2, '0')}`)
-          
-          // Log first 20 bytes for debugging
-          let hexDump = ''
-          for (let i = 0; i < Math.min(20, reportData.byteLength); i++) {
-            hexDump += reportData.getUint8(i).toString(16).padStart(2, '0') + ' '
-          }
-          console.log(`First bytes: ${hexDump}`)
-          
-          // Try different offsets to find serial number
-          const offsets = [
-            { start: 1, length: 12, name: 'offset 1-12' },
-            { start: 6, length: 12, name: 'offset 6-17' },
-            { start: 0, length: 16, name: 'offset 0-15' },
-            { start: 16, length: 12, name: 'offset 16-27' }
-          ]
-          
-          for (const offset of offsets) {
-            if (reportData.byteLength >= offset.start + offset.length) {
-              let serialNumber = ''
-              for (let i = 0; i < offset.length; i++) {
-                const byte = reportData.getUint8(offset.start + i)
-                if (byte >= 32 && byte <= 126) {
-                  serialNumber += String.fromCharCode(byte)
-                } else if (byte === 0) {
-                  break
-                }
-              }
-              
-              if (serialNumber.trim().length >= 8) {
-                console.log(`✅ Found DualSense serial at ${offset.name}: ${serialNumber.trim()}`)
-                return serialNumber.trim()
-              } else if (serialNumber.trim().length > 0) {
-                console.log(`Found text at ${offset.name}: "${serialNumber.trim()}" (too short)`)
-              }
-            }
-          }
-        } catch (reportErr: any) {
-          console.log(`Report 0x${reportId.toString(16).padStart(2, '0')} failed: ${reportErr.message}`)
-        }
+      // Create the request buffer
+      const requestData = new Uint8Array(64)
+      requestData[0] = 0x80
+      requestData[1] = 1   // base
+      requestData[2] = 19  // num (serial number location)
+      
+      // Send the feature report
+      await hidDevice.sendFeatureReport(0x80, requestData)
+      console.log('Sent getSystemInfo request: base=1, num=19')
+      
+      // Wait a bit for controller to process
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Read the response
+      const response = await hidDevice.receiveFeatureReport(0x81)
+      console.log(`Received ${response.byteLength} bytes from report 0x81`)
+      
+      // Log first 25 bytes for debugging
+      let hexDump = ''
+      for (let i = 0; i < Math.min(25, response.byteLength); i++) {
+        hexDump += response.getUint8(i).toString(16).padStart(2, '0') + ' '
+      }
+      console.log(`Response bytes: ${hexDump}`)
+      
+      // Validate response: byte[1] should be 1, byte[2] should be 19, byte[3] should be 2
+      const cmd = response.getUint8(0)
+      const base = response.getUint8(1)
+      const num = response.getUint8(2)
+      const status = response.getUint8(3)
+      
+      console.log(`Response header: cmd=0x${cmd.toString(16)}, base=${base}, num=${num}, status=${status}`)
+      
+      if (cmd !== 0x81 || base !== 1 || num !== 19 || status !== 2) {
+        console.log('❌ Invalid response header')
+        return null
       }
       
-      console.log('❌ Could not find DualSense serial number in any report')
-      return null
+      // Serial number starts at byte 4 and is 17 bytes long
+      const serialNumber = new TextDecoder().decode(response.buffer.slice(4, 4 + 17)).replace(/\0/g, '').trim()
+      
+      if (serialNumber.length >= 8) {
+        console.log(`✅ Found DualSense serial: ${serialNumber}`)
+        return serialNumber
+      } else {
+        console.log(`❌ Serial too short: "${serialNumber}"`)
+        return null
+      }
     } catch (err: any) {
       console.error('Error reading DualSense serial:', err)
       return null
