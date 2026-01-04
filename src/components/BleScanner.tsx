@@ -602,9 +602,9 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
                 )}
                 
                 {/* Add to Inventory Button */}
-                {device.connected && device.serialNumber && device.bodyColor && (
+                {device.connected && device.serialNumber && (
                   <button
-                    onClick={() => onJoyConDetected?.(device.serialNumber!, device.bodyColor!)}
+                    onClick={() => onJoyConDetected?.(device.serialNumber!, device.bodyColor || 'Onbekend')}
                     style={{
                       marginTop: '0.75rem',
                       padding: '0.5rem 1rem',
