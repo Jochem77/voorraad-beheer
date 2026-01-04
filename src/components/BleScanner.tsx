@@ -426,27 +426,59 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
 
   const getDualSenseSerialNumber = async (hidDevice: any): Promise<string | null> => {
     try {
-      // DualSense uses feature report 0x09 to get serial number
-      const reportData = await hidDevice.receiveFeatureReport(0x09)
+      console.log('🎮 Reading DualSense serial number...')
       
-      if (reportData.byteLength >= 48) {
-        // Serial number is at bytes 1-12 (12 characters)
-        let serialNumber = ''
-        for (let i = 1; i <= 12; i++) {
-          const byte = reportData.getUint8(i)
-          if (byte >= 32 && byte <= 126) {
-            serialNumber += String.fromCharCode(byte)
-          } else if (byte === 0) {
-            break
+      // Try multiple feature report IDs
+      const reportIds = [0x09, 0x20, 0x05]
+      
+      for (const reportId of reportIds) {
+        try {
+          console.log(`Trying feature report 0x${reportId.toString(16).padStart(2, '0')}...`)
+          const reportData = await hidDevice.receiveFeatureReport(reportId)
+          
+          console.log(`Received ${reportData.byteLength} bytes from report 0x${reportId.toString(16).padStart(2, '0')}`)
+          
+          // Log first 20 bytes for debugging
+          let hexDump = ''
+          for (let i = 0; i < Math.min(20, reportData.byteLength); i++) {
+            hexDump += reportData.getUint8(i).toString(16).padStart(2, '0') + ' '
           }
-        }
-        
-        if (serialNumber.trim().length > 0) {
-          console.log('✅ DualSense serial number:', serialNumber.trim())
-          return serialNumber.trim()
+          console.log(`First bytes: ${hexDump}`)
+          
+          // Try different offsets to find serial number
+          const offsets = [
+            { start: 1, length: 12, name: 'offset 1-12' },
+            { start: 6, length: 12, name: 'offset 6-17' },
+            { start: 0, length: 16, name: 'offset 0-15' },
+            { start: 16, length: 12, name: 'offset 16-27' }
+          ]
+          
+          for (const offset of offsets) {
+            if (reportData.byteLength >= offset.start + offset.length) {
+              let serialNumber = ''
+              for (let i = 0; i < offset.length; i++) {
+                const byte = reportData.getUint8(offset.start + i)
+                if (byte >= 32 && byte <= 126) {
+                  serialNumber += String.fromCharCode(byte)
+                } else if (byte === 0) {
+                  break
+                }
+              }
+              
+              if (serialNumber.trim().length >= 8) {
+                console.log(`✅ Found DualSense serial at ${offset.name}: ${serialNumber.trim()}`)
+                return serialNumber.trim()
+              } else if (serialNumber.trim().length > 0) {
+                console.log(`Found text at ${offset.name}: "${serialNumber.trim()}" (too short)`)
+              }
+            }
+          }
+        } catch (reportErr: any) {
+          console.log(`Report 0x${reportId.toString(16).padStart(2, '0')} failed: ${reportErr.message}`)
         }
       }
       
+      console.log('❌ Could not find DualSense serial number in any report')
       return null
     } catch (err: any) {
       console.error('Error reading DualSense serial:', err)
