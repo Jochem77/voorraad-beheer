@@ -873,6 +873,23 @@ function App() {
                 <div className="item-details">
                   {selectedItemTab === 'info' && (
                     <>
+                      {(selectedItemModal.type === 'switch_joycon_left' || selectedItemModal.type === 'switch_joycon_right') && editingModalId && (
+                        <div className="detail-row">
+                          <span className="label">Type:</span>
+                          <select
+                            value={selectedItemModal.type}
+                            onChange={(e) => {
+                              const newType = e.target.value as ProductType
+                              updateItem(selectedItemModal.id, { type: newType })
+                              setSelectedItemModal({ ...selectedItemModal, type: newType })
+                            }}
+                            className="edit-select"
+                          >
+                            <option value="switch_joycon_left">Joy-Con Left</option>
+                            <option value="switch_joycon_right">Joy-Con Right</option>
+                          </select>
+                        </div>
+                      )}
                       <div className="detail-row">
                         <span className="label">Kleur:</span>
                         {editingModalId ? (
