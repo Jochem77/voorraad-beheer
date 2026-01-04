@@ -174,6 +174,38 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         <div className="barcode-scanner-content">
           {!cameraStarted && cameras.length > 0 && (
             <div style={{ padding: '1rem', marginBottom: '1rem' }}>
+              {/* Debug info panel */}
+              <div style={{ 
+                backgroundColor: '#1a1a1a', 
+                border: '1px solid #333', 
+                borderRadius: '6px', 
+                padding: '0.75rem',
+                marginBottom: '1rem',
+                fontSize: '0.85rem',
+                color: '#aaa'
+              }}>
+                <div style={{ marginBottom: '0.5rem', fontWeight: 600, color: '#fff' }}>
+                  📷 Camera Debug Info
+                </div>
+                <div>Totaal camera's: {cameras.length}</div>
+                <div>Back camera's: {cameras.filter(d => 
+                  d.label.toLowerCase().includes('back') || 
+                  d.label.toLowerCase().includes('rear') ||
+                  d.label.toLowerCase().includes('achter')
+                ).length}</div>
+                <div style={{ marginTop: '0.5rem', fontSize: '0.8rem' }}>
+                  {cameras.map((cam, i) => (
+                    <div key={cam.deviceId} style={{ 
+                      padding: '0.25rem 0',
+                      color: cam.deviceId === selectedCamera ? '#667eea' : '#888'
+                    }}>
+                      {i}: {cam.label || `Camera ${i}`}
+                      {cam.deviceId === selectedCamera && ' ✓'}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
               <label style={{ display: 'block', marginBottom: '0.5rem', color: '#aaa', fontWeight: 500 }}>Selecteer camera:</label>
               <select 
                 value={selectedCamera} 
