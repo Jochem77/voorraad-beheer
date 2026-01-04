@@ -8,4 +8,7 @@ export default defineConfig({
     outDir: 'docs'
   },
   plugins: [react()],
+  server: {
+    port: 5178
+  }
 })

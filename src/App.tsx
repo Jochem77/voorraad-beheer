@@ -238,7 +238,7 @@ function App() {
     }
   }
 
-  const handleJoyConDetected = (serialNumber: string, color: string) => {
+  const handleJoyConDetected = (serialNumber: string, color: string, controllerType?: string) => {
     // Check if this serial number already exists
     const existingItem = items.find(item => item.serienummer === serialNumber)
     
@@ -251,7 +251,7 @@ function App() {
       // Open add form with prefilled data
       setPrefillData({ serialNumber, color })
       setShowAddModal(true)
-      setAddItemType('switch_joycon_left') // Default to left, user can change
+      setAddItemType(controllerType || 'switch_joycon_left') // Use detected type or default to left
       setCurrentPage('inventory')
     }
   }

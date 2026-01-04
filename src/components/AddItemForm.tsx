@@ -35,21 +35,23 @@ export function AddItemForm({ onAdd, onClose, nextNumber = 1, initialType = 'swi
   // Update type when initialType changes
   useEffect(() => {
     setType(initialType)
-    // Reset color based on new type
-    if (initialType === 'switch_joycon_left' || initialType === 'switch_joycon_right') {
-      setKleur('Black')
-      setKleurHex(JOYCON_COLORS['Black'])
-    } else if (initialType === 'ps5_dualsense') {
-      setKleur('White')
-      setKleurHex(DUALSENSE_COLORS['White'])
-    } else if (initialType === 'switch_lite') {
-      setKleur('Gray')
-      setKleurHex(SWITCH_LITE_COLORS['Gray'])
-    } else if (initialType === 'xbox_series') {
-      setKleur('White')
-      setKleurHex(XBOX_COLORS['White'])
+    // Reset color based on new type (but only if there's no prefill data)
+    if (!prefillData?.color) {
+      if (initialType === 'switch_joycon_left' || initialType === 'switch_joycon_right') {
+        setKleur('Black')
+        setKleurHex(JOYCON_COLORS['Black'])
+      } else if (initialType === 'ps5_dualsense') {
+        setKleur('White')
+        setKleurHex(DUALSENSE_COLORS['White'])
+      } else if (initialType === 'switch_lite') {
+        setKleur('Gray')
+        setKleurHex(SWITCH_LITE_COLORS['Gray'])
+      } else if (initialType === 'xbox_series') {
+        setKleur('White')
+        setKleurHex(XBOX_COLORS['White'])
+      }
     }
-  }, [initialType])
+  }, [initialType, prefillData])
 
   // Prefill data when provided (from Joy-Con scanner)
   useEffect(() => {
@@ -58,17 +60,67 @@ export function AddItemForm({ onAdd, onClose, nextNumber = 1, initialType = 'swi
         setSerienummer(prefillData.serialNumber)
       }
       if (prefillData.color) {
-        // Try to match the hex color to a known color name
-        const colorEntry = Object.entries(JOYCON_COLORS).find(([_, hex]) => 
-          hex.toLowerCase() === prefillData.color?.toLowerCase()
-        )
-        if (colorEntry) {
-          setKleur(colorEntry[0])
-          setKleurHex(colorEntry[1])
-        } else {
-          // Use the hex directly if no match found
-          setKleurHex(prefillData.color)
-        }
+        console.log('Prefill color:', prefillData.color)
+        
+        // Use setTimeout to ensure this runs after the type effect
+        setTimeout(() => {
+          // First check if it's a hex color
+          const colorEntry = Object.entries(JOYCON_COLORS).find(([_, hex]) => 
+            hex.toLowerCase() === prefillData.color?.toLowerCase()
+          )
+          if (colorEntry) {
+            console.log('Found hex match:', colorEntry[0])
+            setKleur(colorEntry[0])
+            setKleurHex(colorEntry[1])
+          } else {
+            // Check if it matches a color name in JOYCON_COLORS
+            const colorNameEntry = Object.entries(JOYCON_COLORS).find(([name, _]) => 
+              name.toLowerCase() === prefillData.color?.toLowerCase()
+            )
+            if (colorNameEntry) {
+              console.log('Found name match in JOYCON_COLORS:', colorNameEntry[0])
+              setKleur(colorNameEntry[0])
+              setKleurHex(colorNameEntry[1])
+            } else {
+              // For DualSense and other controllers: use the color name directly
+              console.log('Using custom color name:', prefillData.color)
+              setKleur(prefillData.color)
+              // Try to set a generic hex based on common color names
+              const colorToHex: { [key: string]: string } = {
+                'wit': '#FFFFFF',
+                'white': '#FFFFFF',
+                'zwart': '#000000',
+                'midnight black': '#1a1a2e',
+                'rood': '#DC143C',
+                'cosmic red': '#DC143C',
+                'roze': '#FF69B4',
+                'nova pink': '#FF69B4',
+                'paars': '#9932CC',
+                'galactic purple': '#9932CC',
+                'blauw': '#0066CC',
+                'starlight blue': '#4A90E2',
+                'cobalt blue': '#0047AB',
+                'grijs': '#808080',
+                'grey camouflage': '#6B7280',
+                'volcanic red': '#C41E3A',
+                'sterling silver': '#C0C0C0',
+                'chroma teal': '#008080',
+                'chroma indigo': '#4B0082',
+                'chroma pearl': '#E6E6FA',
+                '30th anniversary': '#4A90E2',
+                'god of war ragnarok': '#8B0000',
+                'spider-man 2': '#DC143C',
+                'astro bot': '#00CED1',
+                'fortnite': '#7B68EE',
+                'the last of us': '#556B2F'
+              }
+              const lowerColor = prefillData.color.toLowerCase()
+              const hexColor = colorToHex[lowerColor] || '#808080'
+              console.log('Setting hex color:', hexColor, 'for', lowerColor)
+              setKleurHex(hexColor)
+            }
+          }
+        }, 0)
       }
     }
   }, [prefillData])
