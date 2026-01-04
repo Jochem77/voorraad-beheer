@@ -1,6 +1,7 @@
 export type ProductType = 
   | 'switch_joycon_left'
   | 'switch_joycon_right'
+  | 'switch_pro'
   | 'ps5_dualsense'
   | 'switch_regular'
   | 'switch_oled'
@@ -133,8 +134,7 @@ export interface ActionRecord {
 
 export const PRODUCT_LABELS: Record<ProductType, string> = {
   'switch_joycon_left': 'Switch Joy-Con (Left)',
-  'switch_joycon_right': 'Switch Joy-Con (Right)',
-  'ps5_dualsense': 'PS5 DualSense Controller',
+  'switch_joycon_right': 'Switch Joy-Con (Right)',  'switch_pro': 'Switch Pro Controller',  'ps5_dualsense': 'PS5 DualSense Controller',
   'switch_regular': 'Switch Regular',
   'switch_oled': 'Switch OLED',
   'switch_lite': 'Switch Lite',
@@ -228,6 +228,10 @@ export const JOYCON_COLORS: Record<string, string> = {
   'Pokemon Scarlet': '#F07341',
   'Pokemon Violet': '#9650AA',
   'Zelda TOTK Gold': '#D2BE69'
+}
+
+export const PRO_CONTROLLER_COLORS: Record<string, string> = {
+  'Black': '#313131'
 }
 
 export const DUALSENSE_COLORS: Record<string, string> = {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './BleScanner.css'
 
 interface BluetoothDevice {
@@ -24,12 +24,15 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
   const [scanning, setScanning] = useState(false)
   const [connectingDevices, setConnectingDevices] = useState<Set<string>>(new Set())
   const [error, setError] = useState('')
+  const processedDevicesRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     // Cleanup function to close all open HID devices
+    // BUT only if they're not currently being read from
     return () => {
       devices.forEach(device => {
-        if (device.id.startsWith('hid-') && device.connected) {
+        // Don't close devices that are currently connecting
+        if (device.id.startsWith('hid-') && device.connected && !connectingDevices.has(device.id)) {
           const hidDevice = device.rawDevice as any
           if (hidDevice?.opened) {
             hidDevice.close().catch(() => {/* ignore errors on cleanup */})
@@ -37,59 +40,11 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
         }
       })
     }
-  }, [devices])
+  }, [devices, connectingDevices])
 
   useEffect(() => {
-    // Auto-load already connected controllers on app start
-    const loadPairedDevices = async () => {
-      if (!(navigator as any).hid) return
-      
-      try {
-        const devices = await (navigator as any).hid.getDevices()
-        const NINTENDO_VID = 0x057E
-        const SONY_VID = 0x054C
-        const MICROSOFT_VID = 0x045E
-        
-        const controllerDevices = devices.filter((d: any) => 
-          d.vendorId === NINTENDO_VID || 
-          d.vendorId === SONY_VID || 
-          d.vendorId === MICROSOFT_VID
-        )
-        
-        if (controllerDevices.length > 0) {
-          const formattedDevices = controllerDevices.map((d: any) => {
-            // Determine device name based on vendor/product ID
-            let deviceName = d.productName || 'Unknown Controller'
-            if (d.vendorId === MICROSOFT_VID) {
-              deviceName = getXboxModelFromPID(d.productId)
-            }
-            
-            return {
-              id: `hid-${d.vendorId}-${d.productId}-${d.serialNumber || Math.random()}`,
-              name: deviceName,
-              rssi: 0,
-              connected: false,
-              rawDevice: d
-            }
-          })
-          setDevices(formattedDevices)
-          
-          // Auto-connect to first one
-          if (formattedDevices.length > 0) {
-            setTimeout(() => connectDevice(formattedDevices[0]), 500)
-          }
-        }
-      } catch (err) {
-        console.log('No paired controllers found')
-      }
-    }
-    
-    loadPairedDevices()
-    
-    // Auto-open WebHID popup when component mounts
-    setTimeout(() => {
-      scanForJoyCons()
-    }, 500)
+    // Don't auto-load anything - user must manually scan
+    // This prevents showing ghost devices and Joy-Cons in sleep mode
   }, [])
 
   const scanForJoyCons = async () => {
@@ -127,6 +82,8 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
         ]
       })
 
+      console.log('Selected devices:', devices)
+
       if (!devices || devices.length === 0) {
         setError('❌ Geen controller geselecteerd')
         setScanning(false)
@@ -152,8 +109,12 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
         
         setDevices(prev => {
           const updated = [...prev, newDevice]
-          // Auto-connect after device is ready (only once)
-          if (!connectingDevices.has(newDevice.id)) {
+          // Auto-connect after device is ready (only once, prevent React Strict Mode double-mount)
+          const existingDevice = prev.find(d => d.id === newDevice.id)
+          const alreadyProcessed = processedDevicesRef.current.has(newDevice.id)
+          
+          if (!connectingDevices.has(newDevice.id) && !existingDevice && !alreadyProcessed) {
+            processedDevicesRef.current.add(newDevice.id)
             setConnectingDevices(prev => new Set(prev).add(newDevice.id))
             setTimeout(() => connectDevice(newDevice), 800)
           }
@@ -214,9 +175,6 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
           d.id === device.id ? { ...d, connected: true } : d
         ))
         
-        // Store device ID for async operations
-        const deviceId = device.id
-        
         // Wait longer to ensure device is ready for write commands
         setTimeout(() => {
           readWebHIDData(hidDevice, device).finally(() => {
@@ -226,7 +184,7 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
               return updated
             })
           })
-        }, 500)
+        }, 800)  // Back to 800ms
         return
       }
     } catch (err: any) {
@@ -439,99 +397,6 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
     }
   }
 
-  const getMACAddress = async (hidDevice: any): Promise<string | null> => {
-    try {
-      console.log('[MAC] Reading MAC address from device')
-      
-      const macPromise = new Promise<string | null>(async (resolve) => {
-        const timeout = setTimeout(() => {
-          console.log('[MAC] Timeout waiting for MAC address response')
-          hidDevice.removeEventListener('inputreport', inputHandler)
-          resolve(null)
-        }, 2000)
-        
-        const inputHandler = (event: any) => {
-          try {
-            const data = event.data
-            console.log('[MAC] Received input report, length:', data.byteLength)
-            
-            if (data.byteLength >= 0x19) {
-              const byte0D = data.getUint8(0xD)
-              const byte0E = data.getUint8(0xE)
-              const byte0F = data.getUint8(0xF)
-              
-              console.log('[MAC] Checking SPI response - byte0D:', byte0D.toString(16), 'byte0E:', byte0E.toString(16), 'byte0F:', byte0F.toString(16))
-              
-              // Check for SPI read response (address 0x6000 in response)
-              // Response offset is in little-endian at bytes 0xE-0xF
-              const responseOffset = byte0E | (byte0F << 8)
-              
-              if (byte0D === 0x10 && responseOffset === 0x6000) {
-                clearTimeout(timeout)
-                hidDevice.removeEventListener('inputreport', inputHandler)
-                
-                console.log('[MAC] SPI read response detected, extracting MAC address...')
-                
-                // Log all response bytes to see what's actually there
-                const allBytes = []
-                for (let i = 0; i < Math.min(data.byteLength, 40); i++) {
-                  allBytes.push(data.getUint8(i).toString(16).toUpperCase().padStart(2, '0'))
-                }
-                console.log('[MAC] Full response:', allBytes.join(' '))
-                
-                // MAC address is 6 bytes starting at offset 0x13
-                const macBytes = []
-                for (let i = 0; i < 6; i++) {
-                  macBytes.push(data.getUint8(0x13 + i).toString(16).toUpperCase().padStart(2, '0'))
-                }
-                
-                const macAddress = macBytes.join(':')
-                console.log('[MAC] MAC address found:', macAddress)
-                
-                // If all FF, the MAC is not stored here - try using device serial as fallback
-                if (macAddress === 'FF:FF:FF:FF:FF:FF') {
-                  console.log('[MAC] MAC address is all FF, trying device.id as fallback')
-                  resolve(null)
-                } else {
-                  resolve(macAddress)
-                }
-              }
-            }
-          } catch (err) {
-            console.error('[MAC] Error processing input report:', err)
-          }
-        }
-        
-        hidDevice.addEventListener('inputreport', inputHandler)
-        
-        // Send SPI read command for MAC address at 0x6000
-        try {
-          const buf = new Uint8Array(48)
-          buf[0] = 0x01   // cmd: output report
-          buf[1] = 0x00   // timer
-          buf[9] = 0x10   // subcmd: read SPI
-          buf[10] = 0x00  // offset 0x6000 (little-endian)
-          buf[11] = 0x60
-          buf[14] = 0x06  // size 6 bytes
-          
-          console.log('[MAC] Sending SPI read command for MAC address (0x6000, 6 bytes)')
-          await hidDevice.sendReport(0x01, buf)
-        } catch (err: any) {
-          console.error('[MAC] Error sending SPI read command:', err.message || err)
-          clearTimeout(timeout)
-          hidDevice.removeEventListener('inputreport', inputHandler)
-          resolve(null)
-        }
-      })
-      
-      const result = await macPromise
-      console.log('[MAC] Final result:', result)
-      return result
-    } catch (err: any) {
-      console.error('[MAC] getMACAddress error:', err)
-    }
-  }
-
   const getJoyConColor = async (hidDevice: any): Promise<{ body?: string, buttons?: string, leftGrip?: string, rightGrip?: string }> => {
     try {
       const colors: any = {}
@@ -677,8 +542,21 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
 
   const readWebHIDData = async (hidDevice: any, device: BluetoothDevice) => {
     try {
+      // Verify device is open before proceeding
+      if (!hidDevice.opened) {
+        console.log('[Device] Device not open yet, attempting to open...')
+        try {
+          await hidDevice.open()
+        } catch (err: any) {
+          console.error('[Device] Failed to open device:', err.message)
+          return
+        }
+      }
+      
       // Wait for device to be fully ready for commands
       await new Promise(r => setTimeout(r, 500))
+      
+      console.log('[Device] Device is open, proceeding with data read')
       
       // Check controller type
       const isDualSense = hidDevice.vendorId === 0x054C && hidDevice.productId === 0x0CE6
@@ -723,7 +601,7 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
             setDevices(prev => {
               console.log('[Device] Current devices before update:', prev.map(d => ({ id: d.id, name: d.name })))
               const updated = prev.map(d => 
-                d.id === device.id ? { ...d, serialNumber: deviceInfo.mac, connected: true } : d
+                d.id === device.id ? { ...d, serialNumber: deviceInfo.mac || undefined, connected: true } : d
               )
               console.log('[Device] Updated devices:', updated.map(d => ({ id: d.id, name: d.name, serialNumber: d.serialNumber })))
               return updated
@@ -737,27 +615,37 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
           }
         } else {
           // Joy-Cons: use actual serial from 0x6002
+          console.log('[Device] Reading Joy-Con serial number...')
           const serialNumber = await getJoyConSerialNumber(hidDevice)
+          console.log('[Device] Serial number result:', serialNumber)
           if (serialNumber) {
             setDevices(prev => prev.map(d => 
-              d.id === device.id ? { ...d, serialNumber } : d
+              d.id === device.id ? { ...d, serialNumber, connected: true } : d
             ))
           }
-        }
-        
-        // Get colors (only for Joy-Con, not Pro Controller)
-        if (!isProController) {
+          
+          // Wait between reads to prevent "NotAllowedError"
+          await new Promise(r => setTimeout(r, 300))
+          
+          // Get colors
+          console.log('[Device] Reading Joy-Con colors...')
           const colors = await getJoyConColor(hidDevice)
+          console.log('[Device] Colors result:', colors)
+          console.log('[Device] Body color:', colors.body, 'Buttons:', colors.buttons)
           if (colors.body || colors.buttons || colors.leftGrip || colors.rightGrip) {
+            console.log('[Device] Updating device with colors...')
             setDevices(prev => prev.map(d => 
               d.id === device.id ? { 
                 ...d, 
                 bodyColor: colors.body,
                 buttonColor: colors.buttons,
                 leftGripColor: colors.leftGrip,
-                rightGripColor: colors.rightGrip
+                rightGripColor: colors.rightGrip,
+                connected: true
               } : d
             ))
+          } else {
+            console.log('[Device] No colors found, skipping color update')
           }
         }
       }
@@ -958,8 +846,8 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
       <div className="devices-list">
         {devices.map(device => {
           const isLikelyJoyCon = device.name.toLowerCase().includes('joy') || 
-                                device.name.toLowerCase().includes('jc-') ||
-                                device.name.toLowerCase().includes('pro controller')
+                                device.name.toLowerCase().includes('jc-')
+          const isProController = device.name.toLowerCase().includes('pro controller')
           const isDualSense = device.name.toLowerCase().includes('dualsense')
           const isXbox = device.name.toLowerCase().includes('xbox')
           
@@ -969,6 +857,7 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
                 <div className="device-name">
                   {device.name}
                   {isLikelyJoyCon && <span style={{ marginLeft: '0.5rem', color: '#10b981', fontWeight: 'bold' }}>🎮 Joy-Con</span>}
+                  {isProController && <span style={{ marginLeft: '0.5rem', color: '#10b981', fontWeight: 'bold' }}>🎮 Pro Controller</span>}
                   {isDualSense && <span style={{ marginLeft: '0.5rem', color: '#667eea', fontWeight: 'bold' }}>🎮 DualSense</span>}
                   {isXbox && <span style={{ marginLeft: '0.5rem', color: '#107C10', fontWeight: 'bold' }}>🎮 Xbox</span>}
                 </div>
@@ -994,7 +883,16 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
                 {/* Add to Inventory Button */}
                 {device.connected && device.serialNumber && (
                   <button
-                    onClick={() => onJoyConDetected?.(device.serialNumber!, device.bodyColor || 'Onbekend', isDualSense ? 'ps5_dualsense' : undefined)}
+                    onClick={() => {
+                      let controllerType = undefined
+                      let color = device.bodyColor || 'Onbekend'
+                      if (isDualSense) controllerType = 'ps5_dualsense'
+                      else if (isProController) {
+                        controllerType = 'switch_pro'
+                        color = 'Black'  // Pro Controller is altijd zwart
+                      }
+                      onJoyConDetected?.(device.serialNumber!, color, controllerType)
+                    }}
                     style={{
                       marginTop: '0.75rem',
                       padding: '0.5rem 1rem',

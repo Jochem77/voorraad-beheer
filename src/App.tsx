@@ -11,7 +11,7 @@ import { BleScanner } from './components/BleScanner'
 import { TextScanner } from './components/TextScanner'
 import { supabase } from './lib/supabase'
 import type { InventoryItem, ProductType, ActionRecord, Action } from './types'
-import { PRODUCT_LABELS, CONDITION_LABELS, STATUS_LABELS, JOYCON_COLORS, DUALSENSE_COLORS, SWITCH_LITE_COLORS, XBOX_COLORS } from './types'
+import { PRODUCT_LABELS, CONDITION_LABELS, STATUS_LABELS, JOYCON_COLORS, PRO_CONTROLLER_COLORS, DUALSENSE_COLORS, SWITCH_LITE_COLORS, XBOX_COLORS } from './types'
 
 function App() {
   const [user, setUser] = useState<any>(null)
@@ -44,7 +44,7 @@ function App() {
   const [editModalSellingInvoice, setEditModalSellingInvoice] = useState('')
   const [editModalBuyerName, setEditModalBuyerName] = useState('')
   const [filters, setFilters] = useState<FilterState>({
-    types: ['switch_joycon_left', 'switch_joycon_right', 'ps5_dualsense', 'switch_regular', 'switch_oled', 'switch_lite', 'xbox_series'],
+    types: ['switch_joycon_left', 'switch_joycon_right', 'switch_pro', 'ps5_dualsense', 'switch_regular', 'switch_oled', 'switch_lite', 'xbox_series'],
     conditions: ['als_nieuw', 'licht_gebruikt', 'gebruikt', 'beschadigd'],
     statuses: ['nieuw', 'getest', 'defect', 'verkocht'],
     skuSearch: '',
@@ -251,7 +251,7 @@ function App() {
       // Open add form with prefilled data
       setPrefillData({ serialNumber, color })
       setShowAddModal(true)
-      setAddItemType(controllerType || 'switch_joycon_left') // Use detected type or default to left
+      setAddItemType((controllerType || 'switch_joycon_left') as ProductType)
       setCurrentPage('inventory')
     }
   }
@@ -380,12 +380,15 @@ function App() {
       // Bepaal kleur_hex op basis van het producttype
       let kleurHex = selectedItemModal.kleur_hex
       const isJoycon = selectedItemModal.type === 'switch_joycon_left' || selectedItemModal.type === 'switch_joycon_right'
+      const isProController = selectedItemModal.type === 'switch_pro'
       const isDualsense = selectedItemModal.type === 'ps5_dualsense'
       const isSwitchLite = selectedItemModal.type === 'switch_lite'
       const isXbox = selectedItemModal.type === 'xbox_series'
       
       if (isJoycon && JOYCON_COLORS[editModalKleur]) {
         kleurHex = JOYCON_COLORS[editModalKleur]
+      } else if (isProController && PRO_CONTROLLER_COLORS[editModalKleur]) {
+        kleurHex = PRO_CONTROLLER_COLORS[editModalKleur]
       } else if (isDualsense && DUALSENSE_COLORS[editModalKleur]) {
         kleurHex = DUALSENSE_COLORS[editModalKleur]
       } else if (isSwitchLite && SWITCH_LITE_COLORS[editModalKleur]) {
@@ -521,6 +524,7 @@ function App() {
                 >
                   <option value="switch_joycon_left">Switch Joy-Con (Left)</option>
                   <option value="switch_joycon_right">Switch Joy-Con (Right)</option>
+                  <option value="switch_pro">Switch Pro Controller</option>
                   <option value="ps5_dualsense">PS5 DualSense</option>
                   <option value="switch_regular">Switch Regular</option>
                   <option value="switch_oled">Switch OLED</option>
@@ -608,6 +612,17 @@ function App() {
                             >
                               <option value="">Selecteer kleur...</option>
                               {Object.keys(JOYCON_COLORS).map(color => (
+                                <option key={color} value={color}>{color}</option>
+                              ))}
+                            </select>
+                          ) : selectedItemModal.type === 'switch_pro' ? (
+                            <select
+                              value={editModalKleur}
+                              onChange={(e) => setEditModalKleur(e.target.value)}
+                              className="edit-select"
+                            >
+                              <option value="">Selecteer kleur...</option>
+                              {Object.keys(PRO_CONTROLLER_COLORS).map(color => (
                                 <option key={color} value={color}>{color}</option>
                               ))}
                             </select>

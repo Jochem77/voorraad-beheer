@@ -23,6 +23,7 @@ interface FilterModalProps {
 const allProductTypes: ProductType[] = [
   'switch_joycon_left',
   'switch_joycon_right',
+  'switch_pro',
   'ps5_dualsense',
   'switch_regular',
   'switch_oled',

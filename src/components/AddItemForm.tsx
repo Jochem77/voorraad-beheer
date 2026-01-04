@@ -84,7 +84,9 @@ export function AddItemForm({ onAdd, onClose, nextNumber = 1, initialType = 'swi
             } else {
               // For DualSense and other controllers: use the color name directly
               console.log('Using custom color name:', prefillData.color)
-              setKleur(prefillData.color)
+              if (prefillData.color) {
+                setKleur(prefillData.color)
+              }
               // Try to set a generic hex based on common color names
               const colorToHex: { [key: string]: string } = {
                 'wit': '#FFFFFF',
@@ -114,7 +116,7 @@ export function AddItemForm({ onAdd, onClose, nextNumber = 1, initialType = 'swi
                 'fortnite': '#7B68EE',
                 'the last of us': '#556B2F'
               }
-              const lowerColor = prefillData.color.toLowerCase()
+              const lowerColor = (prefillData.color || '').toLowerCase()
               const hexColor = colorToHex[lowerColor] || '#808080'
               console.log('Setting hex color:', hexColor, 'for', lowerColor)
               setKleurHex(hexColor)
