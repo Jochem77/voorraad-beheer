@@ -744,20 +744,6 @@ function App() {
                         </span>
                       </div>
 
-                      <div className="detail-row barcode-row">
-                        <span className="label">SKU QR Code:</span>
-                        <div className="barcode-container">
-                          <QRCodeSVG 
-                            value={selectedItemModal.sku} 
-                            size={200}
-                            bgColor="#1a1a1a"
-                            fgColor="#ffffff"
-                            level="H"
-                            includeMargin={true}
-                          />
-                        </div>
-                      </div>
-
                       <div className="detail-row notes-row">
                         <span className="label">Opmerkingen:</span>
                         {editingModalId ? (
