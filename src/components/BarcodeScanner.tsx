@@ -52,42 +52,46 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         return
       }
       
-      // Initialize ZXing reader with format hints
+      // Initialize ZXing reader if not already done
       if (!readerRef.current) {
         const hints = new Map()
         const formats = [
-          BarcodeFormat.QR_CODE,        // QR codes
-          BarcodeFormat.EAN_13,         // Retail products
-          BarcodeFormat.EAN_8,          // Smaller retail products
-          BarcodeFormat.CODE_128,       // Logistics/shipping
-          BarcodeFormat.CODE_39,        // Industrial
-          BarcodeFormat.UPC_A,          // North American products
-          BarcodeFormat.UPC_E,          // Smaller UPC
-          BarcodeFormat.ITF,            // Cartons/cases
-          BarcodeFormat.CODABAR         // Libraries, blood banks
+          BarcodeFormat.QR_CODE,
+          BarcodeFormat.EAN_13,
+          BarcodeFormat.EAN_8,
+          BarcodeFormat.CODE_128,
+          BarcodeFormat.CODE_39,
+          BarcodeFormat.UPC_A,
+          BarcodeFormat.UPC_E,
+          BarcodeFormat.ITF,
+          BarcodeFormat.CODABAR
         ]
         hints.set(DecodeHintType.POSSIBLE_FORMATS, formats)
         hints.set(DecodeHintType.TRY_HARDER, true)
         
         readerRef.current = new BrowserMultiFormatReader(hints)
+        console.log('✅ ZXing reader initialized')
       }
       
       setCameraStarted(true)
-      console.log('✅ Starting ZXing scanner...')
+      console.log('✅ Starting continuous decode...')
       
-      // Start continuous decode from video device
-      await readerRef.current.decodeFromVideoDevice(
+      // Start continuous decode
+      readerRef.current.decodeFromVideoDevice(
         deviceId,
         videoRef.current!,
-        (result) => {
+        (result, error) => {
           if (result) {
             const code = result.getText()
-            console.log('✅ Barcode scanned:', code, 'Format:', result.getBarcodeFormat())
+            const format = result.getBarcodeFormat()
+            console.log('✅ Code detected:', code, 'Format:', format)
             onScan(code)
             stopScanning()
             onClose()
           }
-          // Silently continue on decode errors (no code in frame)
+          if (error && !(error.name === 'NotFoundException')) {
+            console.error('Decode error:', error)
+          }
         }
       )
     } catch (err: any) {
