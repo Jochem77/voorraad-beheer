@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import jsQR from 'jsqr'
+import { createWorker } from 'tesseract.js'
 import './BarcodeScanner.css'
 
 interface BarcodeScannerProps {
@@ -13,10 +14,39 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const animationRef = useRef<number | null>(null)
+  const ocrWorkerRef = useRef<any>(null)
+  const frameCountRef = useRef(0)
   const [error, setError] = useState<string | null>(null)
   const [cameraStarted, setCameraStarted] = useState(false)
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([])
   const [selectedCamera, setSelectedCamera] = useState<string>('')
+  const [scanStatus, setScanStatus] = useState<string>('Zoeken naar QR code of tekst...')
+
+  // Initialize Tesseract worker
+  useEffect(() => {
+    const initWorker = async () => {
+      if (!ocrWorkerRef.current) {
+        try {
+          const worker = await createWorker('eng')
+          await worker.setParameters({
+            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-',
+          })
+          ocrWorkerRef.current = worker
+          console.log('✅ Tesseract worker initialized')
+        } catch (err) {
+          console.error('Failed to initialize Tesseract:', err)
+        }
+      }
+    }
+    initWorker()
+
+    return () => {
+      if (ocrWorkerRef.current) {
+        ocrWorkerRef.current.terminate()
+        ocrWorkerRef.current = null
+      }
+    }
+  }, [])
 
   // Get available cameras when modal opens
   useEffect(() => {
@@ -81,7 +111,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     }
   }
 
-  const scanQRCode = () => {
+  const scanQRCode = async () => {
     if (!videoRef.current || !canvasRef.current) return
     
     const video = videoRef.current
@@ -103,17 +133,41 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     // Get image data
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
     
-    // Try to decode QR code with all inversion attempts
-    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+    // First: Try to decode QR code (fast)
+    const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
       inversionAttempts: 'attemptBoth'
     })
     
-    if (code && code.data) {
-      console.log('✅ QR Code scanned successfully:', code.data)
-      onScan(code.data)
+    if (qrCode && qrCode.data) {
+      console.log('✅ QR Code detected:', qrCode.data)
+      onScan(qrCode.data)
       stopScanning()
       onClose()
       return
+    }
+    
+    // Second: Try OCR text recognition every 15 frames (to avoid performance issues)
+    frameCountRef.current++
+    if (frameCountRef.current % 15 === 0 && ocrWorkerRef.current) {
+      try {
+        setScanStatus('Tekst herkennen...')
+        const { data: { text } } = await ocrWorkerRef.current.recognize(canvas)
+        
+        // Clean up OCR result: remove whitespace and newlines
+        const cleanText = text.replace(/\s+/g, '').trim()
+        
+        if (cleanText.length >= 3) {
+          console.log('✅ Text detected via OCR:', cleanText)
+          onScan(cleanText)
+          stopScanning()
+          onClose()
+          return
+        }
+        setScanStatus('Zoeken naar QR code of tekst...')
+      } catch (err) {
+        console.error('OCR error:', err)
+        setScanStatus('Zoeken naar QR code of tekst...')
+      }
     }
     
     // Continue scanning
@@ -158,7 +212,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     <div className="barcode-scanner-overlay" onClick={onClose}>
       <div className="barcode-scanner-modal" onClick={(e) => e.stopPropagation()}>
         <div className="barcode-scanner-header">
-          <h3>Scan QR Code</h3>
+          <h3>Scan QR Code of Tekst</h3>
           <button className="btn-close-scanner" onClick={onClose}>✕</button>
         </div>
         <div className="barcode-scanner-content">
@@ -228,7 +282,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         </div>
         <div className="barcode-scanner-footer">
           <p className="scanner-hint">
-            {cameraStarted ? 'Houd de QR code voor de camera' : 'Camera permissie vereist'}
+            {cameraStarted ? scanStatus : 'Camera permissie vereist'}
           </p>
         </div>
       </div>
