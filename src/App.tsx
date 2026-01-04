@@ -3,6 +3,8 @@ import './App.css'
 import { Header } from './components/Header'
 import { InventoryListView } from './components/InventoryListView'
 import { AddItemForm } from './components/AddItemForm'
+import { AddRepairForm } from './components/AddRepairForm'
+import { RepairsList } from './components/RepairsList'
 import { ProductActions } from './components/ProductActions'
 import { Settings } from './components/Settings'
 import { FilterModal, FilterState } from './components/FilterModal'
@@ -10,25 +12,29 @@ import { Login } from './components/Login'
 import { BleScanner } from './components/BleScanner'
 import { TextScanner } from './components/TextScanner'
 import { supabase } from './lib/supabase'
-import type { InventoryItem, ProductType, ActionRecord, Action } from './types'
+import type { InventoryItem, RepairItem, ProductType, ActionRecord, Action } from './types'
 import { PRODUCT_LABELS, CONDITION_LABELS, STATUS_LABELS, JOYCON_COLORS, PRO_CONTROLLER_COLORS, DUALSENSE_COLORS, SWITCH_LITE_COLORS, XBOX_COLORS } from './types'
 
 function App() {
   const [user, setUser] = useState<any>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [items, setItems] = useState<InventoryItem[]>([])
+  const [repairs, setRepairs] = useState<RepairItem[]>([])
   const [actions, setActions] = useState<ActionRecord[]>([])
   const [loading, setLoading] = useState(true)
-  const [currentPage, setCurrentPage] = useState<'inventory' | 'scanner'>('inventory')
+  const [currentPage, setCurrentPage] = useState<'inventory' | 'repairs' | 'scanner'>('inventory')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showAddRepairModal, setShowAddRepairModal] = useState(false)
   const [addItemType, setAddItemType] = useState<ProductType>('switch_joycon_left')
   const [showSettings, setShowSettings] = useState(false)
   const [showFilterModal, setShowFilterModal] = useState(false)
   const [selectedItemModal, setSelectedItemModal] = useState<InventoryItem | null>(null)
+  const [selectedRepairModal, setSelectedRepairModal] = useState<RepairItem | null>(null)
   const [selectedItemTab, setSelectedItemTab] = useState<'info' | 'aankoop' | 'verkoop' | 'acties' | 'fotos'>('info')
   const [expandedPhotoUrl, setExpandedPhotoUrl] = useState<string | null>(null)
   const [photoZoom, setPhotoZoom] = useState(1)
   const [editingModalId, setEditingModalId] = useState(false)
+  const [editingRepairModalId, setEditingRepairModalId] = useState(false)
   const [showTextScanner, setShowTextScanner] = useState(false)
   const [editModalKleur, setEditModalKleur] = useState('')
   const [editModalSerienummer, setEditModalSerienummer] = useState('')
@@ -43,6 +49,13 @@ function App() {
   const [editModalSellingDate, setEditModalSellingDate] = useState('')
   const [editModalSellingInvoice, setEditModalSellingInvoice] = useState('')
   const [editModalBuyerName, setEditModalBuyerName] = useState('')
+  const [editRepairModalKleur, setEditRepairModalKleur] = useState('')
+  const [editRepairModalSerienummer, setEditRepairModalSerienummer] = useState('')
+  const [editRepairModalNotes, setEditRepairModalNotes] = useState('')
+  const [editRepairModalRepairPrice, setEditRepairModalRepairPrice] = useState('')
+  const [editRepairModalRepairDate, setEditRepairModalRepairDate] = useState('')
+  const [editRepairModalRepairInvoice, setEditRepairModalRepairInvoice] = useState('')
+  const [editRepairModalCustomerName, setEditRepairModalCustomerName] = useState('')
   const [filters, setFilters] = useState<FilterState>({
     types: ['switch_joycon_left', 'switch_joycon_right', 'switch_pro', 'ps5_dualsense', 'switch_regular', 'switch_oled', 'switch_lite', 'xbox_series'],
     conditions: ['als_nieuw', 'licht_gebruikt', 'gebruikt', 'beschadigd'],
@@ -51,7 +64,9 @@ function App() {
     serienummerSearch: ''
   })
   const [skuSearch, setSkuSearch] = useState('')
-  const [prefillData, setPrefillData] = useState<{ serialNumber?: string, color?: string } | null>(null)
+  const [prefillData, setPrefillData] = useState<{ serialNumber?: string, color?: string, controllerType?: string } | null>(null)
+  const [repairPrefillData, setRepairPrefillData] = useState<{ serialNumber?: string, color?: string, controllerType?: string } | null>(null)
+  const [editingRepairId, setEditingRepairId] = useState<number | null>(null)
 
   // Handle SKU search and open item details if found
   const handleSkuSearchChange = (value: string) => {
@@ -91,6 +106,7 @@ function App() {
     if (user) {
       fetchItems()
       fetchActions()
+      fetchRepairs()
     }
   }, [user])
 
@@ -114,15 +130,44 @@ function App() {
 
   const fetchActions = async () => {
     try {
-      const { data, error } = await supabase
-        .from('actions')
-        .select('*')
-        .order('date_added', { ascending: false })
+      // Fetch both inventory actions and repair actions
+      const [inventoryActionsResult, repairActionsResult] = await Promise.all([
+        supabase
+          .from('actions')
+          .select('*')
+          .order('date_added', { ascending: false }),
+        supabase
+          .from('repair_actions')
+          .select('*')
+          .order('date_added', { ascending: false })
+      ])
 
-      if (error) throw error
-      setActions(data || [])
+      if (inventoryActionsResult.error) throw inventoryActionsResult.error
+      if (repairActionsResult.error) throw repairActionsResult.error
+
+      // Combine both types of actions
+      const allActions = [
+        ...(inventoryActionsResult.data || []),
+        ...(repairActionsResult.data || [])
+      ]
+
+      setActions(allActions)
     } catch (error) {
       console.error('Error fetching actions:', error)
+    }
+  }
+
+  const fetchRepairs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('repairs')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setRepairs(data || [])
+    } catch (error) {
+      console.error('Error fetching repairs:', error)
     }
   }
 
@@ -141,6 +186,55 @@ function App() {
     } catch (error) {
       console.error('Error adding item:', error)
       alert('Fout bij toevoegen van product')
+    }
+  }
+
+  const addRepair = async (repair: Omit<RepairItem, 'id' | 'date_added' | 'created_at'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('repairs')
+        .insert([repair])
+        .select('*')
+
+      if (error) throw error
+      if (data) {
+        setRepairs([data[0], ...repairs])
+        setShowAddRepairModal(false)
+        setRepairPrefillData(null)
+      }
+    } catch (error) {
+      console.error('Error adding repair:', error)
+      alert('Fout bij toevoegen van reparatie')
+    }
+  }
+
+  const updateRepair = async (id: number, updates: Partial<RepairItem>) => {
+    try {
+      const { error } = await supabase
+        .from('repairs')
+        .update(updates)
+        .eq('id', id)
+
+      if (error) throw error
+      setRepairs(repairs.map(r => r.id === id ? { ...r, ...updates } : r))
+    } catch (error) {
+      console.error('Error updating repair:', error)
+      alert('Fout bij bijwerken van reparatie')
+    }
+  }
+
+  const deleteRepair = async (id: number) => {
+    try {
+      const { error } = await supabase
+        .from('repairs')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+      setRepairs(repairs.filter(r => r.id !== id))
+    } catch (error) {
+      console.error('Error deleting repair:', error)
+      alert('Fout bij verwijderen van reparatie')
     }
   }
 
@@ -238,6 +332,30 @@ function App() {
     }
   }
 
+  const addRepairAction = async (repairId: number, action: Action, otherAction?: string) => {
+    try {
+      const newAction = {
+        repair_id: repairId,
+        action,
+        other_action: otherAction,
+        date_added: new Date().toISOString()
+      }
+
+      const { data, error } = await supabase
+        .from('repair_actions')
+        .insert([newAction])
+        .select('*')
+
+      if (error) throw error
+      if (data) {
+        setActions([data[0], ...actions])
+      }
+    } catch (error) {
+      console.error('Error adding repair action:', error)
+      alert('Fout bij toevoegen van actie')
+    }
+  }
+
   const handleJoyConDetected = (serialNumber: string, color: string, controllerType?: string) => {
     // Check if this serial number already exists
     const existingItem = items.find(item => item.serienummer === serialNumber)
@@ -249,21 +367,48 @@ function App() {
       setCurrentPage('inventory')
     } else {
       // Open add form with prefilled data
-      setPrefillData({ serialNumber, color })
+      setPrefillData({ serialNumber, color, controllerType })
       setShowAddModal(true)
       setAddItemType((controllerType || 'switch_joycon_left') as ProductType)
       setCurrentPage('inventory')
     }
   }
 
+  const handleRepairDetected = (serialNumber: string, color: string, controllerType?: string) => {
+    // Check if this serial number already exists in repairs
+    const existingRepair = repairs.find(repair => repair.serienummer === serialNumber)
+    
+    if (existingRepair) {
+      // TODO: Open the details of the existing repair
+      alert('Deze controller bestaat al in reparaties: ' + serialNumber)
+      setCurrentPage('repairs')
+    } else {
+      // Open add repair form with prefilled data
+      setRepairPrefillData({ serialNumber, color, controllerType })
+      setShowAddRepairModal(true)
+      setAddItemType((controllerType || 'switch_joycon_left') as ProductType)
+      setCurrentPage('repairs')
+    }
+  }
+
   const deleteAction = async (actionId: number) => {
     try {
-      const { error } = await supabase
+      // Try to delete from both tables - one will succeed, one will fail, that's ok
+      const { error: actionsError } = await supabase
         .from('actions')
         .delete()
         .eq('id', actionId)
 
-      if (error) throw error
+      const { error: repairActionsError } = await supabase
+        .from('repair_actions')
+        .delete()
+        .eq('id', actionId)
+
+      // If both fail, throw an error
+      if (actionsError && repairActionsError) {
+        throw actionsError || repairActionsError
+      }
+
       setActions(actions.filter(a => a.id !== actionId))
     } catch (error) {
       console.error('Error deleting action:', error)
@@ -308,6 +453,47 @@ function App() {
       alert(`${uploadedUrls.length} foto(s) succesvol geüpload`)
     } catch (error) {
       console.error('Error uploading photos:', error)
+      alert('Fout bij uploaden van foto\'s')
+    }
+  }
+
+  const uploadRepairPhoto = async (files: File[], repairId: number) => {
+    try {
+      const uploadedUrls: string[] = []
+      
+      for (const file of files) {
+        const fileExt = file.name.split('.').pop()
+        const fileName = `repair-${repairId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`
+        const filePath = `product-photos/${fileName}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('product-photos')
+          .upload(filePath, file)
+
+        if (uploadError) throw uploadError
+
+        const { data } = supabase.storage
+          .from('product-photos')
+          .getPublicUrl(filePath)
+
+        uploadedUrls.push(data.publicUrl)
+      }
+
+      const currentUrls = selectedRepairModal?.photo_urls || []
+      const allUrls = [...currentUrls, ...uploadedUrls]
+
+      await updateRepair(repairId, { photo_urls: allUrls })
+      
+      if (selectedRepairModal?.id === repairId) {
+        setSelectedRepairModal({
+          ...selectedRepairModal,
+          photo_urls: allUrls
+        })
+      }
+
+      alert(`${uploadedUrls.length} foto(s) succesvol geüpload`)
+    } catch (error) {
+      console.error('Error uploading repair photos:', error)
       alert('Fout bij uploaden van foto\'s')
     }
   }
@@ -436,6 +622,68 @@ function App() {
     }
   }
 
+  const startEditRepairModal = () => {
+    if (!selectedRepairModal) return
+    setEditingRepairModalId(true)
+    setEditRepairModalKleur(selectedRepairModal.kleur)
+    setEditRepairModalSerienummer(selectedRepairModal.serienummer)
+    setEditRepairModalNotes(selectedRepairModal.notes || '')
+    setEditRepairModalRepairPrice(selectedRepairModal.repair_price?.toString() || '')
+    setEditRepairModalRepairDate(selectedRepairModal.repair_date?.split('T')[0] || '')
+    setEditRepairModalRepairInvoice(selectedRepairModal.repair_invoice || '')
+    setEditRepairModalCustomerName(selectedRepairModal.customer_name || '')
+  }
+
+  const saveEditRepairModal = async () => {
+    if (!selectedRepairModal) return
+    try {
+      // Bepaal kleur_hex op basis van het producttype
+      let kleurHex = selectedRepairModal.kleur_hex
+      const isJoycon = selectedRepairModal.type === 'switch_joycon_left' || selectedRepairModal.type === 'switch_joycon_right'
+      const isProController = selectedRepairModal.type === 'switch_pro'
+      const isDualsense = selectedRepairModal.type === 'ps5_dualsense'
+      const isSwitchLite = selectedRepairModal.type === 'switch_lite'
+      const isXbox = selectedRepairModal.type === 'xbox_series'
+      
+      if (isJoycon && JOYCON_COLORS[editRepairModalKleur]) {
+        kleurHex = JOYCON_COLORS[editRepairModalKleur]
+      } else if (isProController && PRO_CONTROLLER_COLORS[editRepairModalKleur]) {
+        kleurHex = PRO_CONTROLLER_COLORS[editRepairModalKleur]
+      } else if (isDualsense && DUALSENSE_COLORS[editRepairModalKleur]) {
+        kleurHex = DUALSENSE_COLORS[editRepairModalKleur]
+      } else if (isSwitchLite && SWITCH_LITE_COLORS[editRepairModalKleur]) {
+        kleurHex = SWITCH_LITE_COLORS[editRepairModalKleur]
+      } else if (isXbox && XBOX_COLORS[editRepairModalKleur]) {
+        kleurHex = XBOX_COLORS[editRepairModalKleur]
+      }
+
+      await updateRepair(selectedRepairModal.id, {
+        kleur: editRepairModalKleur.trim(),
+        serienummer: editRepairModalSerienummer.trim(),
+        kleur_hex: kleurHex,
+        notes: editRepairModalNotes.trim(),
+        repair_price: editRepairModalRepairPrice ? parseFloat(editRepairModalRepairPrice) : undefined,
+        repair_date: editRepairModalRepairDate || undefined,
+        repair_invoice: editRepairModalRepairInvoice.trim() || undefined,
+        customer_name: editRepairModalCustomerName.trim() || undefined
+      })
+      setSelectedRepairModal({
+        ...selectedRepairModal,
+        kleur: editRepairModalKleur.trim(),
+        serienummer: editRepairModalSerienummer.trim(),
+        kleur_hex: kleurHex,
+        notes: editRepairModalNotes.trim(),
+        repair_price: editRepairModalRepairPrice ? parseFloat(editRepairModalRepairPrice) : undefined,
+        repair_date: editRepairModalRepairDate || undefined,
+        repair_invoice: editRepairModalRepairInvoice.trim() || undefined,
+        customer_name: editRepairModalCustomerName.trim() || undefined
+      })
+      setEditingRepairModalId(false)
+    } catch (error) {
+      console.error('Error saving repair:', error)
+    }
+  }
+
   const handleLogout = async () => {
     try {
       const { error } = await supabase.auth.signOut()
@@ -471,6 +719,12 @@ function App() {
           onClick={() => setCurrentPage('inventory')}
         >
           📦 Voorraad
+        </button>
+        <button 
+          className={`nav-button ${currentPage === 'repairs' ? 'active' : ''}`}
+          onClick={() => setCurrentPage('repairs')}
+        >
+          🔧 Reparaties
         </button>
         <button 
           className={`nav-button ${currentPage === 'scanner' ? 'active' : ''}`}
@@ -530,6 +784,7 @@ function App() {
                   <option value="switch_oled">Switch OLED</option>
                   <option value="switch_lite">Switch Lite</option>
                   <option value="xbox_series">Xbox Series X/S Controller</option>
+                  <option value="overigen">Overigen</option>
                 </select>
               </div>
               <div className="add-item-form-wrapper">
@@ -1136,8 +1391,497 @@ function App() {
           currentFilters={filters}
         />
           </>
+        ) : currentPage === 'repairs' ? (
+          <>
+            <RepairsList 
+              repairs={repairs}
+              onItemClick={(repair) => {
+                setSelectedRepairModal(repair)
+                setSelectedItemTab('info')
+              }}
+              onAddClick={() => {
+                setEditingRepairId(null)
+                setRepairPrefillData(null)
+                setShowAddRepairModal(true)
+                setAddItemType('switch_joycon_left')
+              }}
+            />
+
+            {showAddRepairModal && (
+              <div className="modal-overlay" onClick={() => setShowAddRepairModal(false)}>
+                <div className="modal-content add-item-modal" onClick={(e) => e.stopPropagation()}>
+                  <button 
+                    className="btn-close-modal"
+                    onClick={() => {
+                      setShowAddRepairModal(false)
+                      setRepairPrefillData(null)
+                    }}
+                  >
+                    ✕
+                  </button>
+                  <div style={{ padding: '1rem', paddingBottom: '0.75rem', borderBottom: 'none' }}>
+                    <label style={{ display: 'block', marginBottom: '0.3rem', color: '#aaa', fontWeight: 500, fontSize: '0.9rem' }}>Product Type</label>
+                    <select 
+                      value={addItemType}
+                      onChange={(e) => setAddItemType(e.target.value as ProductType)}
+                      style={{
+                        width: '100%',
+                        padding: '0.6rem',
+                        border: '1px solid #444',
+                        borderRadius: '6px',
+                        backgroundColor: '#252525',
+                        color: '#fff',
+                        fontSize: '0.95rem',
+                        fontFamily: 'inherit'
+                      }}
+                    >
+                      <option value="switch_joycon_left">Switch Joy-Con (Left)</option>
+                      <option value="switch_joycon_right">Switch Joy-Con (Right)</option>
+                      <option value="switch_pro">Switch Pro Controller</option>
+                      <option value="ps5_dualsense">PS5 DualSense</option>
+                      <option value="switch_regular">Switch Regular</option>
+                      <option value="switch_oled">Switch OLED</option>
+                      <option value="switch_lite">Switch Lite</option>
+                      <option value="xbox_series">Xbox Series X/S Controller</option>
+                      <option value="overigen">Overigen</option>
+                    </select>
+                  </div>
+                  <div className="add-item-form-wrapper">
+                    <AddRepairForm 
+                      onAdd={(repair) => {
+                        if (editingRepairId) {
+                          // Update existing repair
+                          updateRepair(editingRepairId, repair)
+                          setShowAddRepairModal(false)
+                          setEditingRepairId(null)
+                          setRepairPrefillData(null)
+                        } else {
+                          // Add new repair
+                          addRepair(repair)
+                        }
+                      }}
+                      onClose={() => {
+                        setShowAddRepairModal(false)
+                        setEditingRepairId(null)
+                        setRepairPrefillData(null)
+                      }}
+                      initialType={addItemType}
+                      prefillData={repairPrefillData}
+                      existingRepair={editingRepairId ? repairs.find(r => r.id === editingRepairId) : undefined}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
-          <BleScanner onJoyConDetected={handleJoyConDetected} />
+          <BleScanner 
+            onJoyConDetected={handleJoyConDetected}
+            onRepairDetected={handleRepairDetected}
+          />
+        )}
+
+        {selectedRepairModal && (
+          <div className="modal-overlay" onClick={() => setSelectedRepairModal(null)}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <button 
+                className="btn-close-modal"
+                onClick={() => setSelectedRepairModal(null)}
+              >
+                ✕
+              </button>
+              <div className="item-card">
+                <div className="item-header">
+                  <div>
+                    <div className="item-type-label">
+                      {PRODUCT_LABELS[selectedRepairModal.type]} - Reparatie
+                    </div>
+                    <div className="modal-tabs">
+                      <button 
+                        className={`tab-button ${selectedItemTab === 'info' ? 'active' : ''}`}
+                        onClick={() => setSelectedItemTab('info')}
+                      >
+                        Info
+                      </button>
+                      <button 
+                        className={`tab-button ${selectedItemTab === 'aankoop' ? 'active' : ''}`}
+                        onClick={() => setSelectedItemTab('aankoop')}
+                      >
+                        Reparatie
+                      </button>
+                      <button 
+                        className={`tab-button ${selectedItemTab === 'acties' ? 'active' : ''}`}
+                        onClick={() => setSelectedItemTab('acties')}
+                      >
+                        Acties
+                      </button>
+                      <button 
+                        className={`tab-button ${selectedItemTab === 'fotos' ? 'active' : ''}`}
+                        onClick={() => setSelectedItemTab('fotos')}
+                      >
+                        Fotos
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="item-details">
+                  {selectedItemTab === 'info' && (
+                    <>
+                      <div className="detail-row">
+                        <span className="label">Kleur:</span>
+                        {editingRepairModalId ? (
+                          (selectedRepairModal.type === 'switch_joycon_left' || selectedRepairModal.type === 'switch_joycon_right') ? (
+                            <select
+                              value={editRepairModalKleur}
+                              onChange={(e) => setEditRepairModalKleur(e.target.value)}
+                              className="edit-select"
+                            >
+                              <option value="">Selecteer kleur...</option>
+                              {Object.keys(JOYCON_COLORS).map(color => (
+                                <option key={color} value={color}>{color}</option>
+                              ))}
+                            </select>
+                          ) : selectedRepairModal.type === 'switch_pro' ? (
+                            <select
+                              value={editRepairModalKleur}
+                              onChange={(e) => setEditRepairModalKleur(e.target.value)}
+                              className="edit-select"
+                            >
+                              <option value="">Selecteer kleur...</option>
+                              {Object.keys(PRO_CONTROLLER_COLORS).map(color => (
+                                <option key={color} value={color}>{color}</option>
+                              ))}
+                            </select>
+                          ) : selectedRepairModal.type === 'ps5_dualsense' ? (
+                            <select
+                              value={editRepairModalKleur}
+                              onChange={(e) => setEditRepairModalKleur(e.target.value)}
+                              className="edit-select"
+                            >
+                              <option value="">Selecteer kleur...</option>
+                              {Object.keys(DUALSENSE_COLORS).map(color => (
+                                <option key={color} value={color}>{color}</option>
+                              ))}
+                            </select>
+                          ) : selectedRepairModal.type === 'switch_lite' ? (
+                            <select
+                              value={editRepairModalKleur}
+                              onChange={(e) => setEditRepairModalKleur(e.target.value)}
+                              className="edit-select"
+                            >
+                              <option value="">Selecteer kleur...</option>
+                              {Object.keys(SWITCH_LITE_COLORS).map(color => (
+                                <option key={color} value={color}>{color}</option>
+                              ))}
+                            </select>
+                          ) : selectedRepairModal.type === 'xbox_series' ? (
+                            <select
+                              value={editRepairModalKleur}
+                              onChange={(e) => setEditRepairModalKleur(e.target.value)}
+                              className="edit-select"
+                            >
+                              <option value="">Selecteer kleur...</option>
+                              {Object.keys(XBOX_COLORS).map(color => (
+                                <option key={color} value={color}>{color}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              value={editRepairModalKleur}
+                              onChange={(e) => setEditRepairModalKleur(e.target.value)}
+                              className="edit-input"
+                            />
+                          )
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, justifyContent: 'flex-end' }}>
+                            <span className="value" style={{ textAlign: 'right', flex: 'none' }}>{selectedRepairModal.kleur}</span>
+                            {selectedRepairModal.kleur_hex && (
+                              <div 
+                                style={{
+                                  width: '16px',
+                                  height: '16px',
+                                  backgroundColor: selectedRepairModal.kleur_hex,
+                                  borderRadius: '3px',
+                                  border: '1px solid #999'
+                                }}
+                                title={selectedRepairModal.kleur_hex}
+                              />
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="detail-row">
+                        <span className="label">Serienummer:</span>
+                        {editingRepairModalId ? (
+                          <div style={{ display: 'flex', gap: '0.5rem', flex: 1 }}>
+                            <input
+                              type="text"
+                              value={editRepairModalSerienummer}
+                              onChange={(e) => setEditRepairModalSerienummer(e.target.value)}
+                              className="edit-input"
+                              style={{ flex: 1 }}
+                            />
+                            <button 
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                setShowTextScanner(true)
+                              }}
+                              style={{
+                                padding: '0.5rem 0.75rem',
+                                backgroundColor: '#667eea',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '1.2rem'
+                              }}
+                              title="Scan serienummer met camera"
+                            >
+                              📷
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="value">{selectedRepairModal.serienummer}</span>
+                        )}
+                      </div>
+
+                      <TextScanner
+                        isOpen={showTextScanner}
+                        onClose={() => setShowTextScanner(false)}
+                        onScan={(text) => {
+                          setEditRepairModalSerienummer(text)
+                          console.log('Serial number scanned:', text)
+                        }}
+                      />
+
+                      <div className="detail-row">
+                        <span className="label">Toegevoegd:</span>
+                        <span className="date">
+                          {selectedRepairModal.created_at 
+                            ? new Date(selectedRepairModal.created_at).toLocaleDateString('nl-NL')
+                            : '-'
+                          }
+                        </span>
+                      </div>
+
+                      <div className="detail-row notes-row">
+                        <span className="label">Opmerkingen:</span>
+                        {editingRepairModalId ? (
+                          <textarea
+                            value={editRepairModalNotes}
+                            onChange={(e) => setEditRepairModalNotes(e.target.value)}
+                            className="edit-notes"
+                            placeholder="Voeg opmerkingen toe..."
+                            rows={4}
+                          />
+                        ) : (
+                          <div className="notes-display">
+                            {selectedRepairModal.notes ? (
+                              <p>{selectedRepairModal.notes}</p>
+                            ) : (
+                              <p className="no-notes">Geen opmerkingen</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {selectedItemTab === 'aankoop' && (
+                    <>
+                      <div className="detail-row">
+                        <span className="label">Reparatieprijs:</span>
+                        {editingRepairModalId ? (
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={editRepairModalRepairPrice}
+                            onChange={(e) => setEditRepairModalRepairPrice(e.target.value)}
+                            className="edit-input"
+                            placeholder="€"
+                          />
+                        ) : (
+                          <span className="value">
+                            {selectedRepairModal.repair_price ? `€ ${selectedRepairModal.repair_price.toFixed(2)}` : '-'}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="detail-row">
+                        <span className="label">Reparatiedatum:</span>
+                        {editingRepairModalId ? (
+                          <input
+                            type="date"
+                            value={editRepairModalRepairDate}
+                            onChange={(e) => setEditRepairModalRepairDate(e.target.value)}
+                            className="edit-input"
+                          />
+                        ) : (
+                          <span className="value">
+                            {selectedRepairModal.repair_date 
+                              ? new Date(selectedRepairModal.repair_date).toLocaleDateString('nl-NL')
+                              : '-'
+                            }
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="detail-row">
+                        <span className="label">Factuur:</span>
+                        {editingRepairModalId ? (
+                          <input
+                            type="text"
+                            value={editRepairModalRepairInvoice}
+                            onChange={(e) => setEditRepairModalRepairInvoice(e.target.value)}
+                            className="edit-input"
+                            placeholder="bijv. REP-2024-001"
+                          />
+                        ) : (
+                          <span className="value">
+                            {selectedRepairModal.repair_invoice || '-'}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="detail-row">
+                        <span className="label">Klant:</span>
+                        {editingRepairModalId ? (
+                          <input
+                            type="text"
+                            value={editRepairModalCustomerName}
+                            onChange={(e) => setEditRepairModalCustomerName(e.target.value)}
+                            className="edit-input"
+                            placeholder="naam klant"
+                          />
+                        ) : (
+                          <span className="value">
+                            {selectedRepairModal.customer_name || '-'}
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {selectedItemTab === 'acties' && (
+                    <ProductActions
+                      item={selectedRepairModal}
+                      actions={actions.filter(a => a.repair_id === selectedRepairModal.id)}
+                      onAddAction={(id, action, otherAction) => addRepairAction(id, action, otherAction)}
+                      onDeleteAction={deleteAction}
+                    />
+                  )}
+
+                  {selectedItemTab === 'fotos' && (
+                    <div className="photos-section">
+                      {selectedRepairModal.photo_urls && selectedRepairModal.photo_urls.length > 0 ? (
+                        <div className="photos-grid">
+                          {selectedRepairModal.photo_urls.map((photoUrl, index) => (
+                            <div 
+                              key={index} 
+                              className="photo-item"
+                              onDoubleClick={() => {
+                                setExpandedPhotoUrl(photoUrl)
+                                setPhotoZoom(1)
+                              }}
+                              title="Dubbelklik om te vergroten"
+                            >
+                              <img 
+                                src={photoUrl} 
+                                alt={`Reparatie foto ${index + 1}`} 
+                                className="product-photo"
+                              />
+                              {editingRepairModalId && (
+                                <button 
+                                  className="btn-remove-photo"
+                                  onClick={() => {
+                                    const updatedUrls = selectedRepairModal.photo_urls?.filter((_, i) => i !== index) || []
+                                    setSelectedRepairModal({
+                                      ...selectedRepairModal,
+                                      photo_urls: updatedUrls
+                                    })
+                                    updateRepair(selectedRepairModal.id, { photo_urls: updatedUrls })
+                                  }}
+                                >
+                                  🗑️
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="no-photo">Geen foto's beschikbaar</p>
+                      )}
+                      {editingRepairModalId && (
+                        <div className="photo-upload">
+                          <label className="photo-input-label">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              onChange={(e) => {
+                                const files = e.target.files
+                                if (files && files.length > 0 && selectedRepairModal) {
+                                  uploadRepairPhoto(Array.from(files), selectedRepairModal.id)
+                                }
+                              }}
+                              className="photo-input"
+                              style={{ display: 'none' }}
+                            />
+                            Klik om foto's te selecteren
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="item-actions">
+                  {editingRepairModalId ? (
+                    <>
+                      <button
+                        onClick={saveEditRepairModal}
+                        className="btn-save"
+                      >
+                        Opslaan
+                      </button>
+                      <button
+                        onClick={() => setEditingRepairModalId(false)}
+                        className="btn-cancel"
+                      >
+                        Annuleren
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={startEditRepairModal}
+                        className="btn-edit"
+                      >
+                        Bewerken
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm('Zeker deze reparatie verwijderen?')) {
+                            deleteRepair(selectedRepairModal.id)
+                            setSelectedRepairModal(null)
+                          }
+                        }}
+                        className="btn-delete"
+                      >
+                        Verwijderen
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

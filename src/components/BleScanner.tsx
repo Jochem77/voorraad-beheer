@@ -17,9 +17,10 @@ interface BluetoothDevice {
 
 interface BleScannerProps {
   onJoyConDetected?: (serialNumber: string, color: string, controllerType?: string) => void
+  onRepairDetected?: (serialNumber: string, color: string, controllerType?: string) => void
 }
 
-export function BleScanner({ onJoyConDetected }: BleScannerProps) {
+export function BleScanner({ onJoyConDetected, onRepairDetected }: BleScannerProps) {
   const [devices, setDevices] = useState<BluetoothDevice[]>([])
   const [scanning, setScanning] = useState(false)
   const [connectingDevices, setConnectingDevices] = useState<Set<string>>(new Set())
@@ -882,31 +883,56 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
                 
                 {/* Add to Inventory Button */}
                 {device.connected && device.serialNumber && (
-                  <button
-                    onClick={() => {
-                      let controllerType = undefined
-                      let color = device.bodyColor || 'Onbekend'
-                      if (isDualSense) controllerType = 'ps5_dualsense'
-                      else if (isProController) {
-                        controllerType = 'switch_pro'
-                        color = 'Black'  // Pro Controller is altijd zwart
-                      }
-                      onJoyConDetected?.(device.serialNumber!, color, controllerType)
-                    }}
-                    style={{
-                      marginTop: '0.75rem',
-                      padding: '0.5rem 1rem',
-                      backgroundColor: '#10b981',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontWeight: 'bold',
-                      fontSize: '0.9em'
-                    }}
-                  >
-                    ➕ Toevoegen aan Voorraad
-                  </button>
+                  <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      onClick={() => {
+                        let controllerType = undefined
+                        let color = device.bodyColor || 'Onbekend'
+                        if (isDualSense) controllerType = 'ps5_dualsense'
+                        else if (isProController) {
+                          controllerType = 'switch_pro'
+                          color = 'Black'  // Pro Controller is altijd zwart
+                        }
+                        onJoyConDetected?.(device.serialNumber!, color, controllerType)
+                      }}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        backgroundColor: '#10b981',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        fontSize: '0.9em'
+                      }}
+                    >
+                      ➕ Toevoegen aan Voorraad
+                    </button>
+                    <button
+                      onClick={() => {
+                        let controllerType = undefined
+                        let color = device.bodyColor || 'Onbekend'
+                        if (isDualSense) controllerType = 'ps5_dualsense'
+                        else if (isProController) {
+                          controllerType = 'switch_pro'
+                          color = 'Black'  // Pro Controller is altijd zwart
+                        }
+                        onRepairDetected?.(device.serialNumber!, color, controllerType)
+                      }}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        backgroundColor: '#f97316',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        fontSize: '0.9em'
+                      }}
+                    >
+                      🔧 Toevoegen als Reparatie
+                    </button>
+                  </div>
                 )}
                 
                 {/* Color Display */}

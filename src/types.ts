@@ -7,6 +7,7 @@ export type ProductType =
   | 'switch_oled'
   | 'switch_lite'
   | 'xbox_series'
+  | 'overigen'
 
 export type Condition = 'als_nieuw' | 'licht_gebruikt' | 'gebruikt' | 'beschadigd'
 
@@ -123,9 +124,26 @@ export interface InventoryItem {
   created_at?: string
 }
 
+export interface RepairItem {
+  id: number
+  type: ProductType
+  kleur: string
+  kleur_hex?: string
+  serienummer: string
+  repair_date?: string
+  repair_price?: number
+  repair_invoice?: string
+  customer_name?: string
+  notes?: string
+  photo_urls?: string[]
+  date_added?: string
+  created_at?: string
+}
+
 export interface ActionRecord {
   id: number
-  item_id: number
+  item_id?: number
+  repair_id?: number
   action: Action
   other_action?: string
   date_added: string
@@ -138,7 +156,8 @@ export const PRODUCT_LABELS: Record<ProductType, string> = {
   'switch_regular': 'Switch Regular',
   'switch_oled': 'Switch OLED',
   'switch_lite': 'Switch Lite',
-  'xbox_series': 'Xbox Series X/S Controller'
+  'xbox_series': 'Xbox Series X/S Controller',
+  'overigen': 'Overigen'
 }
 
 export const JOYCON_ACTIONS: Record<JoyConAction, string> = {
