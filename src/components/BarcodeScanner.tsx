@@ -24,6 +24,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       navigator.mediaDevices.enumerateDevices()
         .then(devices => {
           const videoDevices = devices.filter(device => device.kind === 'videoinput')
+          console.log('📹 Beschikbare camera\'s:', videoDevices.map(d => ({ id: d.deviceId, label: d.label })))
           setCameras(videoDevices)
           
           // Select last back camera (usually the main camera on phones)
@@ -34,6 +35,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           )
           // Select last back camera (index -1)
           const selected = backCameras[backCameras.length - 1]?.deviceId || videoDevices[0]?.deviceId || ''
+          console.log('🎯 Geselecteerde camera:', videoDevices.find(d => d.deviceId === selected)?.label)
           setSelectedCamera(selected)
           
           // Automatically start camera
@@ -59,8 +61,8 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           deviceId: deviceId ? { exact: deviceId } : undefined,
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
         }
       })
       
@@ -168,6 +170,37 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           <button className="btn-close-scanner" onClick={onClose}>✕</button>
         </div>
         <div className="barcode-scanner-content">
+          {cameras.length > 1 && (
+            <div style={{ marginBottom: '15px', padding: '0 20px' }}>
+              <label htmlFor="camera-select" style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                Selecteer camera:
+              </label>
+              <select 
+                id="camera-select"
+                value={selectedCamera} 
+                onChange={(e) => {
+                  const newCameraId = e.target.value
+                  setSelectedCamera(newCameraId)
+                  console.log('🔄 Wisselen naar camera:', cameras.find(c => c.deviceId === newCameraId)?.label)
+                  stopScanning()
+                  startScanning(newCameraId)
+                }}
+                style={{ 
+                  width: '100%', 
+                  padding: '8px', 
+                  fontSize: '14px', 
+                  borderRadius: '4px',
+                  border: '1px solid #ccc'
+                }}
+              >
+                {cameras.map((camera, index) => (
+                  <option key={camera.deviceId} value={camera.deviceId}>
+                    {camera.label || `Camera ${index + 1}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div style={{ position: 'relative', width: '100%', maxWidth: '500px', margin: '0 auto' }}>
             <video 
               ref={videoRef}

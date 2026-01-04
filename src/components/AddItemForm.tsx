@@ -290,6 +290,7 @@ export function AddItemForm({ onAdd, onClose, nextNumber = 1, initialType = 'swi
               onClose={() => setShowTextScanner(false)}
               onScan={(text) => {
                 setSerienummer(text)
+                setShowTextScanner(false)
                 console.log('Serial number scanned:', text)
               }}
             />

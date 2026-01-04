@@ -20,6 +20,7 @@ export function TextScanner({ isOpen, onClose, onScan }: TextScannerProps) {
   const [selectedCamera, setSelectedCamera] = useState<string>('')
   const [scanStatus, setScanStatus] = useState<string>('Initialiseren...')
   const [isScanning, setIsScanning] = useState(false)
+  const [detectedText, setDetectedText] = useState<string>('')
 
   // Initialize Tesseract worker
   useEffect(() => {
@@ -65,7 +66,13 @@ export function TextScanner({ isOpen, onClose, onScan }: TextScannerProps) {
             d.label.toLowerCase().includes('rear') ||
             d.label.toLowerCase().includes('achter')
           )
-          setSelectedCamera(backCamera?.deviceId || videoDevices[0]?.deviceId || '')
+          const selected = backCamera?.deviceId || videoDevices[0]?.deviceId || ''
+          setSelectedCamera(selected)
+          
+          // Automatically start camera
+          if (selected) {
+            startScanning(selected)
+          }
         })
         .catch(err => {
           console.error('Error getting cameras:', err)
@@ -141,18 +148,39 @@ export function TextScanner({ isOpen, onClose, onScan }: TextScannerProps) {
       // Draw video frame to canvas
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
       
-      // Perform OCR
-      const { data: { text } } = await ocrWorkerRef.current.recognize(canvas)
+      // Define scan area (center 60% width, 30% height)
+      const scanWidth = Math.floor(canvas.width * 0.6)
+      const scanHeight = Math.floor(canvas.height * 0.3)
+      const scanX = Math.floor((canvas.width - scanWidth) / 2)
+      const scanY = Math.floor((canvas.height - scanHeight) / 2)
+      
+      console.log('🔍 Scan gebied:', { scanX, scanY, scanWidth, scanHeight })
+      
+      // Create a temporary canvas for the cropped area
+      const cropCanvas = document.createElement('canvas')
+      cropCanvas.width = scanWidth
+      cropCanvas.height = scanHeight
+      const cropCtx = cropCanvas.getContext('2d')
+      
+      if (!cropCtx) return
+      
+      // Draw only the scan area to the crop canvas
+      cropCtx.drawImage(canvas, scanX, scanY, scanWidth, scanHeight, 0, 0, scanWidth, scanHeight)
+      
+      // Perform OCR on the cropped canvas
+      const { data: { text } } = await ocrWorkerRef.current.recognize(cropCanvas)
+      
+      console.log('📝 Ruwe OCR output:', text)
       
       // Clean up OCR result: remove whitespace and newlines
       const cleanText = text.replace(/\s+/g, '').trim()
       
       if (cleanText.length >= 3) {
         console.log('✅ Text detected via OCR:', cleanText)
-        onScan(cleanText)
-        stopScanning()
-        onClose()
+        setDetectedText(cleanText)
+        setScanStatus(`Gevonden: ${cleanText}`)
       } else {
+        console.log('⚠️ Tekst te kort:', cleanText.length, 'karakters')
         setScanStatus('Houd tekst stil voor de camera')
       }
     } catch (err) {
@@ -179,7 +207,16 @@ export function TextScanner({ isOpen, onClose, onScan }: TextScannerProps) {
     }
     
     setCameraStarted(false)
+    setDetectedText('')
     console.log('Camera stopped')
+  }
+
+  const acceptDetectedText = () => {
+    if (detectedText) {
+      onScan(detectedText)
+      stopScanning()
+      onClose()
+    }
   }
 
   useEffect(() => {
@@ -206,12 +243,20 @@ export function TextScanner({ isOpen, onClose, onScan }: TextScannerProps) {
           <button className="btn-close-scanner" onClick={onClose}>✕</button>
         </div>
         <div className="barcode-scanner-content">
-          {!cameraStarted && cameras.length > 0 && (
+          {cameras.length > 1 && (
             <div style={{ padding: '1rem', marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', color: '#aaa', fontWeight: 500 }}>Selecteer camera:</label>
               <select 
                 value={selectedCamera} 
-                onChange={(e) => setSelectedCamera(e.target.value)}
+                onChange={(e) => {
+                  const newCameraId = e.target.value
+                  setSelectedCamera(newCameraId)
+                  console.log('🔄 Wisselen naar camera:', cameras.find(c => c.deviceId === newCameraId)?.label)
+                  if (cameraStarted) {
+                    stopScanning()
+                    startScanning(newCameraId)
+                  }
+                }}
                 style={{
                   width: '100%',
                   padding: '0.6rem',
@@ -219,8 +264,7 @@ export function TextScanner({ isOpen, onClose, onScan }: TextScannerProps) {
                   borderRadius: '6px',
                   backgroundColor: '#252525',
                   color: '#fff',
-                  fontSize: '0.95rem',
-                  marginBottom: '1rem'
+                  fontSize: '0.95rem'
                 }}
               >
                 {cameras.map(camera => (
@@ -229,22 +273,6 @@ export function TextScanner({ isOpen, onClose, onScan }: TextScannerProps) {
                   </option>
                 ))}
               </select>
-              <button 
-                onClick={() => startScanning(selectedCamera)}
-                style={{
-                  width: '100%',
-                  padding: '0.8rem',
-                  backgroundColor: '#667eea',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                📷 Start Camera
-              </button>
             </div>
           )}
           <div style={{ position: 'relative', width: '100%', maxWidth: '500px', margin: '0 auto' }}>
@@ -254,6 +282,56 @@ export function TextScanner({ isOpen, onClose, onScan }: TextScannerProps) {
               playsInline
               muted
             />
+            {cameraStarted && (
+              <div style={{  
+                position: 'absolute',
+                top: '35%',
+                left: '20%',
+                width: '60%',
+                height: '30%',
+                border: '3px solid #10b981',
+                borderRadius: '8px',
+                boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)',
+                pointerEvents: 'none',
+                zIndex: 5
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  top: '-30px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  padding: '4px 12px',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  whiteSpace: 'nowrap'
+                }}>
+                  Plaats serienummer hier
+                </div>
+              </div>
+            )}
+            {detectedText && (
+              <div style={{
+                position: 'absolute',
+                top: '10px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                backgroundColor: 'rgba(102, 126, 234, 0.95)',
+                color: 'white',
+                padding: '12px 20px',
+                borderRadius: '8px',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+                zIndex: 10,
+                maxWidth: '90%',
+                wordBreak: 'break-all'
+              }}>
+                {detectedText}
+              </div>
+            )}
             <canvas 
               ref={canvasRef}
               style={{ display: 'none' }}
@@ -264,6 +342,45 @@ export function TextScanner({ isOpen, onClose, onScan }: TextScannerProps) {
               </div>
             )}
           </div>
+          {detectedText && (
+            <div style={{ marginTop: '15px', textAlign: 'center', padding: '0 20px' }}>
+              <button 
+                onClick={acceptDetectedText}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  marginBottom: '10px'
+                }}
+              >
+                ✓ Accepteer "{detectedText}"
+              </button>
+              <button 
+                onClick={() => {
+                  setDetectedText('')
+                  setScanStatus('Houd tekst stil voor de camera')
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  cursor: 'pointer'
+                }}
+              >
+                Opnieuw scannen
+              </button>
+            </div>
+          )}
           {error && (
             <div className="scanner-error">
               <p>{error}</p>

@@ -178,10 +178,24 @@ function App() {
         .insert([item])
         .select('*')
 
-      if (error) throw error
+      if (error) {
+        // Check for duplicate SKU or serial number
+        if (error.code === '23505') {
+          if (error.message.includes('serienummer')) {
+            alert('Dit serienummer bestaat al in de database: ' + item.serienummer)
+          } else if (error.message.includes('sku')) {
+            alert('Deze SKU bestaat al. Probeer opnieuw.')
+          } else {
+            alert('Dit item bestaat al in de database')
+          }
+          return
+        }
+        throw error
+      }
       if (data) {
         setItems([data[0], ...items])
         setShowAddModal(false)
+        setPrefillData(null)
       }
     } catch (error) {
       console.error('Error adding item:', error)
@@ -794,7 +808,10 @@ function App() {
                     setShowAddModal(false)
                     setPrefillData(null)
                   }}
-                  nextNumber={items.length + 1}
+                  nextNumber={Math.max(0, ...items.map(item => {
+                    const match = item.sku.match(/SKU-(\d+)/)
+                    return match ? parseInt(match[1]) : 0
+                  })) + 1}
                   initialType={addItemType}
                   prefillData={prefillData}
                 />
