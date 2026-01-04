@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from 'react'
-import { QRCodeSVG } from 'qrcode.react'
 import './App.css'
 import { Header } from './components/Header'
 import { InventoryListView } from './components/InventoryListView'
