@@ -15,16 +15,44 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
   const animationRef = useRef<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cameraStarted, setCameraStarted] = useState(false)
+  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([])
+  const [selectedCamera, setSelectedCamera] = useState<string>('')
 
-  const startScanning = async () => {
+  // Get available cameras when modal opens
+  useEffect(() => {
+    if (isOpen && cameras.length === 0) {
+      navigator.mediaDevices.enumerateDevices()
+        .then(devices => {
+          const videoDevices = devices.filter(device => device.kind === 'videoinput')
+          console.log('Available cameras:', videoDevices)
+          setCameras(videoDevices)
+          
+          // Try to select back camera by default
+          const backCamera = videoDevices.find(d => 
+            d.label.toLowerCase().includes('back') || 
+            d.label.toLowerCase().includes('rear') ||
+            d.label.toLowerCase().includes('achter')
+          )
+          setSelectedCamera(backCamera?.deviceId || videoDevices[0]?.deviceId || '')
+        })
+        .catch(err => {
+          console.error('Error getting cameras:', err)
+          setError('Kan camera lijst niet ophalen')
+        })
+    }
+  }, [isOpen])
+
+  const startScanning = async (cameraId?: string) => {
     try {
       setError(null)
       console.log('⏳ Starting camera...')
       
-      // Request camera access with back camera preference
+      const deviceId = cameraId || selectedCamera
+      
+      // Request camera access with specific device ID
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: { ideal: 'environment' },
+          deviceId: deviceId ? { exact: deviceId } : undefined,
           width: { ideal: 1280 },
           height: { ideal: 720 }
         }
@@ -112,11 +140,11 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
   }
 
   useEffect(() => {
-    if (isOpen) {
-      startScanning()
-    } else {
+    if (!isOpen) {
       stopScanning()
       setError(null)
+      setCameras([])
+      setSelectedCamera('')
     }
     
     return () => {
@@ -134,6 +162,47 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           <button className="btn-close-scanner" onClick={onClose}>✕</button>
         </div>
         <div className="barcode-scanner-content">
+          {!cameraStarted && cameras.length > 0 && (
+            <div style={{ padding: '1rem', marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', color: '#aaa', fontWeight: 500 }}>Selecteer camera:</label>
+              <select 
+                value={selectedCamera} 
+                onChange={(e) => setSelectedCamera(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.6rem',
+                  border: '1px solid #444',
+                  borderRadius: '6px',
+                  backgroundColor: '#252525',
+                  color: '#fff',
+                  fontSize: '0.95rem',
+                  marginBottom: '1rem'
+                }}
+              >
+                {cameras.map(camera => (
+                  <option key={camera.deviceId} value={camera.deviceId}>
+                    {camera.label || `Camera ${cameras.indexOf(camera) + 1}`}
+                  </option>
+                ))}
+              </select>
+              <button 
+                onClick={() => startScanning(selectedCamera)}
+                style={{
+                  width: '100%',
+                  padding: '0.8rem',
+                  backgroundColor: '#667eea',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                📷 Start Camera
+              </button>
+            </div>
+          )}
           <div style={{ position: 'relative', width: '100%', maxWidth: '500px', margin: '0 auto' }}>
             <video 
               ref={videoRef}
