@@ -33,7 +33,13 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
             d.label.toLowerCase().includes('achter')
           )
           // Select last back camera (index -1)
-          setSelectedCamera(backCameras[backCameras.length - 1]?.deviceId || videoDevices[0]?.deviceId || '')
+          const selected = backCameras[backCameras.length - 1]?.deviceId || videoDevices[0]?.deviceId || ''
+          setSelectedCamera(selected)
+          
+          // Automatically start camera
+          if (selected) {
+            startScanning(selected)
+          }
         })
         .catch(err => {
           console.error('Error getting cameras:', err)
