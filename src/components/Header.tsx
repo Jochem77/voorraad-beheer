@@ -36,9 +36,14 @@ export function Header({ onLogout, userEmail }: HeaderProps) {
       </div>
       <div className="header-right">
         {userEmail && <span className="user-email">{userEmail}</span>}
-        <button className="btn-logout" onClick={onLogout}>
-          Uitloggen
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+          <button className="btn-logout" onClick={onLogout}>
+            Uitloggen
+          </button>
+          <div style={{ fontSize: '0.75rem', color: '#666' }}>
+            v0.1.1
+          </div>
+        </div>
       </div>
     </div>
   )
