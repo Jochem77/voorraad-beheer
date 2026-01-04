@@ -684,7 +684,11 @@ function App() {
                             />
                             <button 
                               type="button"
-                              onClick={() => setShowTextScanner(true)}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                setShowTextScanner(true)
+                              }}
                               style={{
                                 padding: '0.5rem 0.75rem',
                                 backgroundColor: '#667eea',
