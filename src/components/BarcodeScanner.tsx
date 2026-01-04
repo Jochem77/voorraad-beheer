@@ -24,7 +24,10 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       navigator.mediaDevices.enumerateDevices()
         .then(devices => {
           const videoDevices = devices.filter(device => device.kind === 'videoinput')
-          console.log('Available cameras:', videoDevices)
+          console.log('📷 All video devices found:', videoDevices.length)
+          videoDevices.forEach((d, i) => {
+            console.log(`Camera ${i}: "${d.label}" (ID: ${d.deviceId.substring(0, 20)}...)`)
+          })
           setCameras(videoDevices)
           
           // Try to select first back camera (camera 0 back)
@@ -33,8 +36,14 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
             d.label.toLowerCase().includes('rear') ||
             d.label.toLowerCase().includes('achter')
           )
+          console.log(`📷 Back cameras found: ${backCameras.length}`)
+          backCameras.forEach((d, i) => {
+            console.log(`  Back camera ${i}: "${d.label}"`)
+          })
           // Select first back camera (index 0 of back cameras)
-          setSelectedCamera(backCameras[0]?.deviceId || videoDevices[0]?.deviceId || '')
+          const selected = backCameras[0]?.deviceId || videoDevices[0]?.deviceId || ''
+          console.log(`📷 Selected camera: ${videoDevices.find(d => d.deviceId === selected)?.label}`)
+          setSelectedCamera(selected)
         })
         .catch(err => {
           console.error('Error getting cameras:', err)
