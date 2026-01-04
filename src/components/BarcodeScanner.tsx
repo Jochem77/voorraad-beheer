@@ -27,13 +27,14 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           console.log('Available cameras:', videoDevices)
           setCameras(videoDevices)
           
-          // Try to select back camera by default
-          const backCamera = videoDevices.find(d => 
+          // Try to select first back camera (camera 0 back)
+          const backCameras = videoDevices.filter(d => 
             d.label.toLowerCase().includes('back') || 
             d.label.toLowerCase().includes('rear') ||
             d.label.toLowerCase().includes('achter')
           )
-          setSelectedCamera(backCamera?.deviceId || videoDevices[0]?.deviceId || '')
+          // Select first back camera (index 0 of back cameras)
+          setSelectedCamera(backCameras[0]?.deviceId || videoDevices[0]?.deviceId || '')
         })
         .catch(err => {
           console.error('Error getting cameras:', err)
