@@ -473,7 +473,7 @@ function App() {
           className={`nav-button ${currentPage === 'scanner' ? 'active' : ''}`}
           onClick={() => setCurrentPage('scanner')}
         >
-          📱 Bluetooth Scanner
+          📱 Controller Scanner
         </button>
       </nav>
       <main className="container">

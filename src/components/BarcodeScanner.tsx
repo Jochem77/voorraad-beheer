@@ -168,47 +168,6 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
           <button className="btn-close-scanner" onClick={onClose}>✕</button>
         </div>
         <div className="barcode-scanner-content">
-          {!cameraStarted && cameras.length > 0 && (
-            <div style={{ padding: '1rem', marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', color: '#aaa', fontWeight: 500 }}>Selecteer camera:</label>
-              <select 
-                value={selectedCamera} 
-                onChange={(e) => setSelectedCamera(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.6rem',
-                  border: '1px solid #444',
-                  borderRadius: '6px',
-                  backgroundColor: '#252525',
-                  color: '#fff',
-                  fontSize: '0.95rem',
-                  marginBottom: '1rem'
-                }}
-              >
-                {cameras.map(camera => (
-                  <option key={camera.deviceId} value={camera.deviceId}>
-                    {camera.label || `Camera ${cameras.indexOf(camera) + 1}`}
-                  </option>
-                ))}
-              </select>
-              <button 
-                onClick={() => startScanning(selectedCamera)}
-                style={{
-                  width: '100%',
-                  padding: '0.8rem',
-                  backgroundColor: '#667eea',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                📷 Start Camera
-              </button>
-            </div>
-          )}
           <div style={{ position: 'relative', width: '100%', maxWidth: '500px', margin: '0 auto' }}>
             <video 
               ref={videoRef}

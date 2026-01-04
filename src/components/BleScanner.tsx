@@ -69,23 +69,27 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
         return
       }
 
-      // Joy-Con vendor ID (Nintendo)
+      // Controller vendor/product IDs
       const NINTENDO_VID = 0x057E
       const JOYCON_L_PID = 0x2006
       const JOYCON_R_PID = 0x2007
       const PRO_CONTROLLER_PID = 0x2009
+      
+      const SONY_VID = 0x054C
+      const DUALSENSE_PID = 0x0CE6  // DualSense (PS5)
 
-      console.log('Requesting WebHID Joy-Con device...')
+      console.log('Requesting WebHID controller device...')
       const devices = await (navigator as any).hid.requestDevice({
         filters: [
           { vendorId: NINTENDO_VID, productId: JOYCON_L_PID },
           { vendorId: NINTENDO_VID, productId: JOYCON_R_PID },
-          { vendorId: NINTENDO_VID, productId: PRO_CONTROLLER_PID }
+          { vendorId: NINTENDO_VID, productId: PRO_CONTROLLER_PID },
+          { vendorId: SONY_VID, productId: DUALSENSE_PID }
         ]
       })
 
       if (!devices || devices.length === 0) {
-        setError('❌ Geen Joy-Con geselecteerd')
+        setError('❌ Geen controller geselecteerd')
         setScanning(false)
         return
       }
@@ -94,7 +98,7 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
       for (const device of devices) {
         const newDevice: BluetoothDevice = {
           id: `hid-${device.vendorId}-${device.productId}-${Math.random()}`,
-          name: device.productName || 'Joy-Con',
+          name: device.productName || 'Controller',
           rssi: 0,
           connected: device.opened,
           rawDevice: device,
@@ -376,26 +380,39 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
 
   const readWebHIDData = async (hidDevice: any, device: BluetoothDevice) => {
     try {
-      // Get serial number
-      const serialNumber = await getJoyConSerialNumber(hidDevice)
-      if (serialNumber) {
-        setDevices(prev => prev.map(d => 
-          d.id === device.id ? { ...d, serialNumber } : d
-        ))
-      }
+      // Check if this is a PS5 DualSense controller
+      const isDualSense = hidDevice.vendorId === 0x054C && hidDevice.productId === 0x0CE6
       
-      // Get colors
-      const colors = await getJoyConColor(hidDevice)
-      if (colors.body || colors.buttons || colors.leftGrip || colors.rightGrip) {
-        setDevices(prev => prev.map(d => 
-          d.id === device.id ? { 
-            ...d, 
-            bodyColor: colors.body,
-            buttonColor: colors.buttons,
-            leftGripColor: colors.leftGrip,
-            rightGripColor: colors.rightGrip
-          } : d
-        ))
+      if (isDualSense) {
+        // Get PS5 DualSense serial number
+        const serialNumber = await getDualSenseSerialNumber(hidDevice)
+        if (serialNumber) {
+          setDevices(prev => prev.map(d => 
+            d.id === device.id ? { ...d, serialNumber } : d
+          ))
+        }
+      } else {
+        // Get Joy-Con serial number
+        const serialNumber = await getJoyConSerialNumber(hidDevice)
+        if (serialNumber) {
+          setDevices(prev => prev.map(d => 
+            d.id === device.id ? { ...d, serialNumber } : d
+          ))
+        }
+        
+        // Get colors (only for Joy-Con)
+        const colors = await getJoyConColor(hidDevice)
+        if (colors.body || colors.buttons || colors.leftGrip || colors.rightGrip) {
+          setDevices(prev => prev.map(d => 
+            d.id === device.id ? { 
+              ...d, 
+              bodyColor: colors.body,
+              buttonColor: colors.buttons,
+              leftGripColor: colors.leftGrip,
+              rightGripColor: colors.rightGrip
+            } : d
+          ))
+        }
       }
       
       // Keep device open for receiving reports
@@ -404,6 +421,36 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
       })
     } catch (err: any) {
       console.error('Error reading data:', err)
+    }
+  }
+
+  const getDualSenseSerialNumber = async (hidDevice: any): Promise<string | null> => {
+    try {
+      // DualSense uses feature report 0x09 to get serial number
+      const reportData = await hidDevice.receiveFeatureReport(0x09)
+      
+      if (reportData.byteLength >= 48) {
+        // Serial number is at bytes 1-12 (12 characters)
+        let serialNumber = ''
+        for (let i = 1; i <= 12; i++) {
+          const byte = reportData.getUint8(i)
+          if (byte >= 32 && byte <= 126) {
+            serialNumber += String.fromCharCode(byte)
+          } else if (byte === 0) {
+            break
+          }
+        }
+        
+        if (serialNumber.trim().length > 0) {
+          console.log('✅ DualSense serial number:', serialNumber.trim())
+          return serialNumber.trim()
+        }
+      }
+      
+      return null
+    } catch (err: any) {
+      console.error('Error reading DualSense serial:', err)
+      return null
     }
   }
 
@@ -451,16 +498,16 @@ export function BleScanner({ onJoyConDetected }: BleScannerProps) {
   return (
     <div className="ble-scanner">
       <div className="scanner-header">
-        <h2>🎮 Joy-Con Pairing</h2>
+        <h2>🎮 Controller Pairing</h2>
         <div className="scanner-buttons" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button 
             className="btn-scan" 
             onClick={scanForJoyCons}
             disabled={scanning}
-            title="Scan voor Joy-Cons via WebHID (Windows pairing vereist)"
+            title="Scan voor controllers via WebHID (Windows pairing vereist)"
             style={{ backgroundColor: '#06b6d4', flex: 1 }}
           >
-            {scanning ? 'Scannen...' : '🎮 Scan Joy-Con'}
+            {scanning ? 'Scannen...' : '🎮 Scan'}
           </button>
         </div>
       </div>
