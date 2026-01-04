@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import type { InventoryItem, ProductType, Condition, Status } from '../types'
 import { JOYCON_COLORS, DUALSENSE_COLORS, SWITCH_LITE_COLORS, XBOX_COLORS } from '../types'
+import { TextScanner } from './TextScanner'
 import './AddItemForm.css'
 
 interface AddItemFormProps {
@@ -29,6 +30,7 @@ export function AddItemForm({ onAdd, onClose, nextNumber = 1, initialType = 'swi
   const [sellingInvoice, setSellingInvoice] = useState('')
   const [buyerName, setBuyerName] = useState('')
   const [notes, setNotes] = useState('')
+  const [showTextScanner, setShowTextScanner] = useState(false)
 
   // Update type when initialType changes
   useEffect(() => {
@@ -197,14 +199,42 @@ export function AddItemForm({ onAdd, onClose, nextNumber = 1, initialType = 'swi
 
             <div className="detail-row">
               <span className="label">Serienummer:</span>
-              <input
-                type="text"
-                value={serienummer}
-                onChange={(e) => setSerienummer(e.target.value)}
-                placeholder="bijv. HAC-001"
-                className="edit-input"
-              />
+              <div style={{ display: 'flex', gap: '0.5rem', flex: 1 }}>
+                <input
+                  type="text"
+                  value={serienummer}
+                  onChange={(e) => setSerienummer(e.target.value)}
+                  placeholder="bijv. HAC-001"
+                  className="edit-input"
+                  style={{ flex: 1 }}
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowTextScanner(true)}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    backgroundColor: '#667eea',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '1.2rem'
+                  }}
+                  title="Scan serienummer met camera"
+                >
+                  📷
+                </button>
+              </div>
             </div>
+
+            <TextScanner
+              isOpen={showTextScanner}
+              onClose={() => setShowTextScanner(false)}
+              onScan={(text) => {
+                setSerienummer(text)
+                console.log('Serial number scanned:', text)
+              }}
+            />
 
             <div className="detail-row">
               <span className="label">Staat:</span>

@@ -8,6 +8,7 @@ import { Settings } from './components/Settings'
 import { FilterModal, FilterState } from './components/FilterModal'
 import { Login } from './components/Login'
 import { BleScanner } from './components/BleScanner'
+import { TextScanner } from './components/TextScanner'
 import { supabase } from './lib/supabase'
 import type { InventoryItem, ProductType, ActionRecord, Action } from './types'
 import { PRODUCT_LABELS, CONDITION_LABELS, STATUS_LABELS, JOYCON_COLORS, DUALSENSE_COLORS, SWITCH_LITE_COLORS, XBOX_COLORS } from './types'
@@ -28,6 +29,7 @@ function App() {
   const [expandedPhotoUrl, setExpandedPhotoUrl] = useState<string | null>(null)
   const [photoZoom, setPhotoZoom] = useState(1)
   const [editingModalId, setEditingModalId] = useState(false)
+  const [showTextScanner, setShowTextScanner] = useState(false)
   const [editModalKleur, setEditModalKleur] = useState('')
   const [editModalSerienummer, setEditModalSerienummer] = useState('')
   const [editModalStaat, setEditModalStaat] = useState<'als_nieuw' | 'licht_gebruikt' | 'gebruikt' | 'beschadigd'>('als_nieuw')
@@ -672,16 +674,44 @@ function App() {
                       <div className="detail-row">
                         <span className="label">Serienummer:</span>
                         {editingModalId ? (
-                          <input
-                            type="text"
-                            value={editModalSerienummer}
-                            onChange={(e) => setEditModalSerienummer(e.target.value)}
-                            className="edit-input"
-                          />
+                          <div style={{ display: 'flex', gap: '0.5rem', flex: 1 }}>
+                            <input
+                              type="text"
+                              value={editModalSerienummer}
+                              onChange={(e) => setEditModalSerienummer(e.target.value)}
+                              className="edit-input"
+                              style={{ flex: 1 }}
+                            />
+                            <button 
+                              type="button"
+                              onClick={() => setShowTextScanner(true)}
+                              style={{
+                                padding: '0.5rem 0.75rem',
+                                backgroundColor: '#667eea',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '1.2rem'
+                              }}
+                              title="Scan serienummer met camera"
+                            >
+                              📷
+                            </button>
+                          </div>
                         ) : (
                           <span className="value">{selectedItemModal.serienummer}</span>
                         )}
                       </div>
+
+                      <TextScanner
+                        isOpen={showTextScanner}
+                        onClose={() => setShowTextScanner(false)}
+                        onScan={(text) => {
+                          setEditModalSerienummer(text)
+                          console.log('Serial number scanned:', text)
+                        }}
+                      />
 
                       <div className="detail-row">
                         <span className="label">Staat:</span>
