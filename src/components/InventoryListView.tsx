@@ -50,8 +50,7 @@ export function InventoryListView({ items, onDelete, onUpdate, onEditCard, total
       <div className="inventory-list-view">
         <div className="list-header">
           <div className="list-title">
-            <h2>Voorraadlijst</h2>
-            <p className="list-count">Aantal: 0</p>
+            <h2>Voorraadlijst (0)</h2>
           </div>
           <div className="list-actions-buttons">
             {onFilterClick && (
@@ -83,9 +82,26 @@ export function InventoryListView({ items, onDelete, onUpdate, onEditCard, total
     <div className="inventory-list-view">
       <div className="list-header">
         <div className="list-title">
-          <h2>Voorraadlijst</h2>
-          <p className="list-count">Aantal: {items.length}{items.length !== totalItems ? ` / ${totalItems}` : ''}</p>
+          <h2>Voorraadlijst ({items.length}{items.length !== totalItems ? ` / ${totalItems}` : ''})</h2>
         </div>
+        {onSkuSearchChange && (
+          <div className="sku-search-wrapper">
+            <input
+              type="text"
+              value={skuSearch || ''}
+              onChange={(e) => onSkuSearchChange(e.target.value)}
+              placeholder="🔍 Zoek op SKU..."
+              className="sku-search-input"
+            />
+            <button 
+              className="btn-scan-barcode"
+              onClick={() => setShowScanner(true)}
+              title="Scan barcode"
+            >
+              📷
+            </button>
+          </div>
+        )}
         <div className="list-actions-buttons">
           {onFilterClick && (
             <button className="btn-filter-small" onClick={onFilterClick}>
@@ -104,35 +120,17 @@ export function InventoryListView({ items, onDelete, onUpdate, onEditCard, total
           )}
         </div>
       </div>
-      {onSkuSearchChange && (
-        <div className="sku-search-bar">
-          <div className="sku-search-wrapper">
-            <input
-              type="text"
-              value={skuSearch || ''}
-              onChange={(e) => onSkuSearchChange(e.target.value)}
-              placeholder="🔍 Zoek op SKU..."
-              className="sku-search-input"
-            />
-            <button 
-              className="btn-scan-barcode"
-              onClick={() => setShowScanner(true)}
-              title="Scan barcode"
-            >
-              📷
-            </button>
-          </div>
-          <BarcodeScanner 
-            isOpen={showScanner}
-            onClose={() => setShowScanner(false)}
-            onScan={(code) => {
-              console.log('Barcode received in InventoryListView:', code)
-              onSkuSearchChange(code)
-              console.log('SKU search updated with:', code)
-            }}
-          />
-        </div>
-      )}
+      <BarcodeScanner 
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScan={(code) => {
+          console.log('Barcode received in InventoryListView:', code)
+          if (onSkuSearchChange) {
+            onSkuSearchChange(code)
+            console.log('SKU search updated with:', code)
+          }
+        }}
+      />
       <div className="table-wrapper">
         <table className="inventory-table">
           <thead>

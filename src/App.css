@@ -35,10 +35,11 @@ body {
   background: #1a1a1a;
   border-bottom: 1px solid #333;
   padding: 0 2rem;
+  margin-bottom: 0;
 }
 
 .nav-button {
-  padding: 1rem 2rem;
+  padding: 0.6rem 2rem;
   background: transparent;
   color: #aaa;
   border: none;
@@ -195,7 +196,7 @@ body {
   flex: 1;
   max-width: 100%;
   margin: 0;
-  padding: 2rem;
+  padding: 0 2rem 1rem 2rem;
   width: 100%;
 }
 
