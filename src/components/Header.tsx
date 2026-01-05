@@ -11,23 +11,7 @@ export function Header({ onLogout, userEmail }: HeaderProps) {
     <div className="app-header">
       <div className="header-left">
         <div className="logo-container">
-          <div className="logo-shapes">
-            <div className="shape-row">
-              <div className="shape circle"></div>
-              <div className="shape circle"></div>
-              <div className="shape circle"></div>
-            </div>
-            <div className="shape-row">
-              <div className="shape square"></div>
-              <div className="shape square"></div>
-              <div className="shape square"></div>
-            </div>
-            <div className="shape-row">
-              <div className="shape circle"></div>
-              <div className="shape circle"></div>
-              <div className="shape circle"></div>
-            </div>
-          </div>
+          <img src="/voorraad-beheer/logo.png" alt="Save Our Stuff Logo" className="logo-image" />
           <div className="logo-text">
             <div className="logo-title">SAVE OUR STUFF</div>
             <div className="logo-subtitle">www.save-our-stuff.nl</div>
