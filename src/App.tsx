@@ -70,17 +70,30 @@ function App() {
 
   // Handle SKU search and open item details if found
   const handleSkuSearchChange = (value: string) => {
+    console.log('🔍 SKU search value:', value)
     setSkuSearch(value)
     
     // If value is provided (from QR scan), try to find and open the item
-    if (value) {
-      const foundItem = items.find(item => 
-        item.sku.toLowerCase() === value.toLowerCase()
-      )
+    // Search in ALL items, not just filtered items
+    if (value && value.trim()) {
+      const searchValue = value.trim().toLowerCase()
+      console.log('🔎 Searching for SKU:', searchValue)
+      console.log('📦 Total items to search:', items.length)
+      
+      const foundItem = items.find(item => {
+        const itemSku = item.sku.toLowerCase()
+        console.log('Comparing:', itemSku, 'with', searchValue)
+        return itemSku === searchValue || itemSku.includes(searchValue)
+      })
       
       if (foundItem) {
+        console.log('✅ Item found:', foundItem.sku)
         setSelectedItemModal(foundItem)
         setSelectedItemTab('info')
+        // Clear search to show all items again
+        setSkuSearch('')
+      } else {
+        console.log('❌ No item found with SKU:', value)
       }
     }
   }

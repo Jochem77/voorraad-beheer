@@ -57,12 +57,14 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
       
       const deviceId = cameraId || selectedCamera
       
-      // Request camera access with specific device ID
+      // Request camera access with higher resolution for better QR detection
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           deviceId: deviceId ? { exact: deviceId } : undefined,
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
+          width: { ideal: 3840, min: 1280 },
+          height: { ideal: 2160, min: 720 },
+          aspectRatio: { ideal: 16/9 },
+          facingMode: 'environment'
         }
       })
       
@@ -94,7 +96,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     
     const video = videoRef.current
     const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
     
     if (!ctx || video.readyState !== video.HAVE_ENOUGH_DATA) {
       animationRef.current = requestAnimationFrame(scanQRCode)
@@ -104,6 +106,8 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     // Set canvas size to video size
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
+    
+    console.log('📸 Scanning frame:', canvas.width, 'x', canvas.height)
     
     // Draw video frame to canvas
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
@@ -118,6 +122,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
     
     if (code && code.data) {
       console.log('✅ QR Code scanned successfully:', code.data)
+      console.log('📍 QR Code location:', code.location)
       onScan(code.data)
       stopScanning()
       onClose()
@@ -201,13 +206,64 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
               </select>
             </div>
           )}
-          <div style={{ position: 'relative', width: '100%', maxWidth: '500px', margin: '0 auto' }}>
+          <div style={{ position: 'relative', width: '100%', maxWidth: '800px', margin: '0 auto' }}>
             <video 
               ref={videoRef}
               style={{ width: '100%', height: 'auto', display: cameraStarted ? 'block' : 'none' }}
               playsInline
               muted
             />
+            {cameraStarted && (
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '70%',
+                height: '70%',
+                border: '3px solid rgba(0, 255, 0, 0.5)',
+                borderRadius: '8px',
+                boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.3)',
+                pointerEvents: 'none'
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  top: '-2px',
+                  left: '-2px',
+                  width: '30px',
+                  height: '30px',
+                  borderTop: '4px solid #00ff00',
+                  borderLeft: '4px solid #00ff00'
+                }} />
+                <div style={{
+                  position: 'absolute',
+                  top: '-2px',
+                  right: '-2px',
+                  width: '30px',
+                  height: '30px',
+                  borderTop: '4px solid #00ff00',
+                  borderRight: '4px solid #00ff00'
+                }} />
+                <div style={{
+                  position: 'absolute',
+                  bottom: '-2px',
+                  left: '-2px',
+                  width: '30px',
+                  height: '30px',
+                  borderBottom: '4px solid #00ff00',
+                  borderLeft: '4px solid #00ff00'
+                }} />
+                <div style={{
+                  position: 'absolute',
+                  bottom: '-2px',
+                  right: '-2px',
+                  width: '30px',
+                  height: '30px',
+                  borderBottom: '4px solid #00ff00',
+                  borderRight: '4px solid #00ff00'
+                }} />
+              </div>
+            )}
             <canvas 
               ref={canvasRef}
               style={{ display: 'none' }}
@@ -226,7 +282,7 @@ export function BarcodeScanner({ isOpen, onClose, onScan }: BarcodeScannerProps)
         </div>
         <div className="barcode-scanner-footer">
           <p className="scanner-hint">
-            {cameraStarted ? 'Houd de QR code voor de camera' : 'Camera permissie vereist'}
+            {cameraStarted ? 'Plaats de QR code binnen het groene kader' : 'Camera permissie vereist'}
           </p>
         </div>
       </div>
