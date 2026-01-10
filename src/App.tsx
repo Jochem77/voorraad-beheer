@@ -886,6 +886,11 @@ function App() {
                 <div className="item-details">
                   {selectedItemTab === 'info' && (
                     <>
+                      <div className="detail-row">
+                        <span className="label">SKU:</span>
+                        <span className="value">{selectedItemModal.sku}</span>
+                      </div>
+
                       {(selectedItemModal.type === 'switch_joycon_left' || selectedItemModal.type === 'switch_joycon_right') && editingModalId && (
                         <div className="detail-row">
                           <span className="label">Type:</span>
