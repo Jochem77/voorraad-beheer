@@ -44,8 +44,8 @@ export function BleScanner({ onJoyConDetected, onRepairDetected }: BleScannerPro
   }, [devices, connectingDevices])
 
   useEffect(() => {
-    // Don't auto-load anything - user must manually scan
-    // This prevents showing ghost devices and Joy-Cons in sleep mode
+    // Auto-start scanning when component mounts
+    scanForJoyCons()
   }, [])
 
   const scanForJoyCons = async () => {
@@ -117,7 +117,7 @@ export function BleScanner({ onJoyConDetected, onRepairDetected }: BleScannerPro
           if (!connectingDevices.has(newDevice.id) && !existingDevice && !alreadyProcessed) {
             processedDevicesRef.current.add(newDevice.id)
             setConnectingDevices(prev => new Set(prev).add(newDevice.id))
-            setTimeout(() => connectDevice(newDevice), 800)
+            setTimeout(() => connectDevice(newDevice), 200)
           }
           return updated
         })
@@ -176,7 +176,7 @@ export function BleScanner({ onJoyConDetected, onRepairDetected }: BleScannerPro
           d.id === device.id ? { ...d, connected: true } : d
         ))
         
-        // Wait longer to ensure device is ready for write commands
+        // Start reading data quickly after device is open
         setTimeout(() => {
           readWebHIDData(hidDevice, device).finally(() => {
             setConnectingDevices(prev => {
@@ -185,7 +185,7 @@ export function BleScanner({ onJoyConDetected, onRepairDetected }: BleScannerPro
               return updated
             })
           })
-        }, 800)  // Back to 800ms
+        }, 300)  // Reduced to 300ms for faster response
         return
       }
     } catch (err: any) {
@@ -411,7 +411,7 @@ export function BleScanner({ onJoyConDetected, onRepairDetected }: BleScannerPro
       }
       
       // Wait between reads to prevent "NotAllowedError"
-      await new Promise(r => setTimeout(r, 200))
+      await new Promise(r => setTimeout(r, 100))
       
       // Read buttons color: 0x6053 - 0x6055 (3 bytes RGB)
       console.log('[Color] Reading buttons color from 0x6053...')
@@ -422,7 +422,7 @@ export function BleScanner({ onJoyConDetected, onRepairDetected }: BleScannerPro
       }
       
       // Wait between reads to prevent "NotAllowedError"
-      await new Promise(r => setTimeout(r, 200))
+      await new Promise(r => setTimeout(r, 100))
       
       // Read left grip color: 0x6056 - 0x6058 (3 bytes RGB, Pro only)
       console.log('[Color] Reading left grip color from 0x6056...')
@@ -433,7 +433,7 @@ export function BleScanner({ onJoyConDetected, onRepairDetected }: BleScannerPro
       }
       
       // Wait between reads to prevent "NotAllowedError"
-      await new Promise(r => setTimeout(r, 200))
+      await new Promise(r => setTimeout(r, 100))
       
       // Read right grip color: 0x6059 - 0x605B (3 bytes RGB, Pro only)
       console.log('[Color] Reading right grip color from 0x6059...')
@@ -555,7 +555,7 @@ export function BleScanner({ onJoyConDetected, onRepairDetected }: BleScannerPro
       }
       
       // Wait for device to be fully ready for commands
-      await new Promise(r => setTimeout(r, 500))
+      await new Promise(r => setTimeout(r, 200))
       
       console.log('[Device] Device is open, proceeding with data read')
       
@@ -626,7 +626,7 @@ export function BleScanner({ onJoyConDetected, onRepairDetected }: BleScannerPro
           }
           
           // Wait between reads to prevent "NotAllowedError"
-          await new Promise(r => setTimeout(r, 300))
+          await new Promise(r => setTimeout(r, 150))
           
           // Get colors
           console.log('[Device] Reading Joy-Con colors...')
