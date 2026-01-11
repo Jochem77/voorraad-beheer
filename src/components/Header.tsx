@@ -1,5 +1,6 @@
 
 import './Header.css'
+import packageJson from '../../package.json'
 
 interface HeaderProps {
   onLogout: () => void
@@ -25,7 +26,7 @@ export function Header({ onLogout, userEmail }: HeaderProps) {
             Uitloggen
           </button>
           <div style={{ fontSize: '0.75rem', color: '#666' }}>
-            v0.1.2
+            v{packageJson.version}
           </div>
         </div>
       </div>
