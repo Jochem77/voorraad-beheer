@@ -25,7 +25,7 @@ export function Header({ onLogout, userEmail }: HeaderProps) {
             Uitloggen
           </button>
           <div style={{ fontSize: '0.75rem', color: '#666' }}>
-            v0.1.1
+            v0.1.2
           </div>
         </div>
       </div>
