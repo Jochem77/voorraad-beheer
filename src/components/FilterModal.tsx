@@ -83,6 +83,30 @@ export function FilterModal({ isOpen, onClose, onApply, currentFilters }: Filter
     })
   }
 
+  const toggleAllTypes = () => {
+    if (filters.types.length === allProductTypes.length) {
+      setFilters(prev => ({ ...prev, types: [] }))
+    } else {
+      setFilters(prev => ({ ...prev, types: [...allProductTypes] }))
+    }
+  }
+
+  const toggleAllConditions = () => {
+    if (filters.conditions.length === allConditions.length) {
+      setFilters(prev => ({ ...prev, conditions: [] }))
+    } else {
+      setFilters(prev => ({ ...prev, conditions: [...allConditions] }))
+    }
+  }
+
+  const toggleAllStatuses = () => {
+    if (filters.statuses.length === allStatuses.length) {
+      setFilters(prev => ({ ...prev, statuses: [] }))
+    } else {
+      setFilters(prev => ({ ...prev, statuses: [...allStatuses] }))
+    }
+  }
+
   return (
     <div className="filter-overlay" onClick={onClose}>
       <div className="filter-modal" onClick={(e) => e.stopPropagation()}>
@@ -132,10 +156,19 @@ export function FilterModal({ isOpen, onClose, onApply, currentFilters }: Filter
 
           {/* Product types */}
           <div className="filter-section">
-            <h3>Producttype</h3>
+            <div className="filter-section-header">
+              <label className="checkbox-label checkbox-header">
+                <input
+                  type="checkbox"
+                  checked={filters.types.length === allProductTypes.length}
+                  onChange={toggleAllTypes}
+                />
+                <h3>Producttype</h3>
+              </label>
+            </div>
             <div className="checkbox-group">
               {allProductTypes.map(type => (
-                <label key={type} className="checkbox-label">
+                <label key={type} className="checkbox-label checkbox-sub">
                   <input
                     type="checkbox"
                     checked={filters.types.includes(type)}
@@ -149,10 +182,19 @@ export function FilterModal({ isOpen, onClose, onApply, currentFilters }: Filter
 
           {/* Conditions */}
           <div className="filter-section">
-            <h3>Staat</h3>
+            <div className="filter-section-header">
+              <label className="checkbox-label checkbox-header">
+                <input
+                  type="checkbox"
+                  checked={filters.conditions.length === allConditions.length}
+                  onChange={toggleAllConditions}
+                />
+                <h3>Staat</h3>
+              </label>
+            </div>
             <div className="checkbox-group">
               {allConditions.map(condition => (
-                <label key={condition} className="checkbox-label">
+                <label key={condition} className="checkbox-label checkbox-sub">
                   <input
                     type="checkbox"
                     checked={filters.conditions.includes(condition)}
@@ -166,10 +208,19 @@ export function FilterModal({ isOpen, onClose, onApply, currentFilters }: Filter
 
           {/* Statuses */}
           <div className="filter-section">
-            <h3>Status</h3>
+            <div className="filter-section-header">
+              <label className="checkbox-label checkbox-header">
+                <input
+                  type="checkbox"
+                  checked={filters.statuses.length === allStatuses.length}
+                  onChange={toggleAllStatuses}
+                />
+                <h3>Status</h3>
+              </label>
+            </div>
             <div className="checkbox-group">
               {allStatuses.map(status => (
-                <label key={status} className="checkbox-label">
+                <label key={status} className="checkbox-label checkbox-sub">
                   <input
                     type="checkbox"
                     checked={filters.statuses.includes(status)}
