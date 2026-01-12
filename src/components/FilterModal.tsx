@@ -116,44 +116,6 @@ export function FilterModal({ isOpen, onClose, onApply, currentFilters }: Filter
         </div>
 
         <div className="filter-content">
-          {/* Search field */}
-          <div className="filter-section">
-            <h3>Zoeken</h3>
-            <div className="filter-group">
-              <label>Serienummer</label>
-              <input
-                type="text"
-                value={filters.serienummerSearch}
-                onChange={(e) => setFilters({...filters, serienummerSearch: e.target.value})}
-                placeholder="Serienummer zoeken..."
-                className="filter-input"
-              />
-            </div>
-          </div>
-
-          {/* Date range */}
-          <div className="filter-section">
-            <h3>Datum toegevoegd</h3>
-            <div className="filter-group">
-              <label>Van</label>
-              <input
-                type="date"
-                value={filters.dateFrom || ''}
-                onChange={(e) => setFilters({...filters, dateFrom: e.target.value || undefined})}
-                className="filter-input"
-              />
-            </div>
-            <div className="filter-group">
-              <label>Tot</label>
-              <input
-                type="date"
-                value={filters.dateTo || ''}
-                onChange={(e) => setFilters({...filters, dateTo: e.target.value || undefined})}
-                className="filter-input"
-              />
-            </div>
-          </div>
-
           {/* Product types */}
           <div className="filter-section">
             <div className="filter-section-header">
@@ -229,6 +191,44 @@ export function FilterModal({ isOpen, onClose, onApply, currentFilters }: Filter
                   {STATUS_LABELS[status]}
                 </label>
               ))}
+            </div>
+          </div>
+
+          {/* Search field */}
+          <div className="filter-section">
+            <h3>Zoeken</h3>
+            <div className="filter-group">
+              <label>Serienummer</label>
+              <input
+                type="text"
+                value={filters.serienummerSearch}
+                onChange={(e) => setFilters({...filters, serienummerSearch: e.target.value})}
+                placeholder="Serienummer zoeken..."
+                className="filter-input"
+              />
+            </div>
+          </div>
+
+          {/* Date range */}
+          <div className="filter-section">
+            <h3>Datum toegevoegd</h3>
+            <div className="filter-group">
+              <label>Van</label>
+              <input
+                type="date"
+                value={filters.dateFrom || ''}
+                onChange={(e) => setFilters({...filters, dateFrom: e.target.value || undefined})}
+                className="filter-input"
+              />
+            </div>
+            <div className="filter-group">
+              <label>Tot</label>
+              <input
+                type="date"
+                value={filters.dateTo || ''}
+                onChange={(e) => setFilters({...filters, dateTo: e.target.value || undefined})}
+                className="filter-input"
+              />
             </div>
           </div>
         </div>
