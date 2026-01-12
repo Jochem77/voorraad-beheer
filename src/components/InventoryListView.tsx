@@ -15,6 +15,7 @@ interface InventoryListViewProps {
   onSettingsClick?: () => void
   skuSearch?: string
   onSkuSearchChange?: (value: string) => void
+  onSkuSearchSubmit?: (value: string) => void
 }
 
 const statusColors: Record<Status, string> = {
@@ -31,7 +32,7 @@ const conditionColors: Record<Condition, string> = {
   'beschadigd': '#ef4444'
 }
 
-export function InventoryListView({ items, onDelete, onUpdate, onEditCard, totalItems, onFilterClick, onAddClick, onSettingsClick, skuSearch, onSkuSearchChange }: InventoryListViewProps) {
+export function InventoryListView({ items, onDelete, onUpdate, onEditCard, totalItems, onFilterClick, onAddClick, onSettingsClick, skuSearch, onSkuSearchChange, onSkuSearchSubmit }: InventoryListViewProps) {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editKleur, setEditKleur] = useState('')
   const [showScanner, setShowScanner] = useState(false)
@@ -90,7 +91,12 @@ export function InventoryListView({ items, onDelete, onUpdate, onEditCard, total
               type="text"
               value={skuSearch || ''}
               onChange={(e) => onSkuSearchChange(e.target.value)}
-              placeholder="🔍 Zoek op SKU..."
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && onSkuSearchSubmit) {
+                  onSkuSearchSubmit(skuSearch || '')
+                }
+              }}
+              placeholder="🔍 Zoek op SKU... (druk Enter)"
               className="sku-search-input"
             />
             <button 
@@ -125,9 +131,10 @@ export function InventoryListView({ items, onDelete, onUpdate, onEditCard, total
         onClose={() => setShowScanner(false)}
         onScan={(code) => {
           console.log('Barcode received in InventoryListView:', code)
-          if (onSkuSearchChange) {
-            onSkuSearchChange(code)
-            console.log('SKU search updated with:', code)
+          setShowScanner(false)
+          if (onSkuSearchSubmit) {
+            onSkuSearchSubmit(code)
+            console.log('SKU search submitted with:', code)
           }
         }}
       />

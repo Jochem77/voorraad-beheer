@@ -68,12 +68,14 @@ function App() {
   const [repairPrefillData, setRepairPrefillData] = useState<{ serialNumber?: string, color?: string, controllerType?: string } | null>(null)
   const [editingRepairId, setEditingRepairId] = useState<number | null>(null)
 
-  // Handle SKU search and open item details if found
+  // Handle SKU search input change
   const handleSkuSearchChange = (value: string) => {
     console.log('🔍 SKU search value:', value)
     setSkuSearch(value)
-    
-    // If value is provided (from QR scan), try to find and open the item
+  }
+
+  // Handle opening item when Enter is pressed or barcode is scanned
+  const handleSkuSearchSubmit = (value: string) => {
     // Search in ALL items, not just filtered items
     if (value && value.trim()) {
       const searchValue = value.trim().toLowerCase()
@@ -776,6 +778,7 @@ function App() {
               onSettingsClick={() => setShowSettings(true)}
               skuSearch={skuSearch}
               onSkuSearchChange={handleSkuSearchChange}
+              onSkuSearchSubmit={handleSkuSearchSubmit}
             />
 
         {showAddModal && (
@@ -834,8 +837,8 @@ function App() {
         )}
 
         {selectedItemModal && (
-          <div className="modal-overlay" onClick={() => setSelectedItemModal(null)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-overlay">
+            <div className="modal-content">
               <button 
                 className="btn-close-modal"
                 onClick={() => setSelectedItemModal(null)}
@@ -1534,8 +1537,8 @@ function App() {
         )}
 
         {selectedRepairModal && (
-          <div className="modal-overlay" onClick={() => setSelectedRepairModal(null)}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-overlay">
+            <div className="modal-content">
               <button 
                 className="btn-close-modal"
                 onClick={() => setSelectedRepairModal(null)}
